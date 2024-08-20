@@ -34,8 +34,10 @@ func NewTitan(ctx context.Context, cancel context.CancelFunc, app string) *Titan
 }
 
 func (t *Titan) ApiServer(addr string) *Titan {
-	apiCtx := context.WithoutCancel(t.ctx)
-	t.api = service.NewApiServer(apiCtx, addr)
+	if addr != "" {
+		apiCtx := context.WithoutCancel(t.ctx)
+		t.api = service.NewApiServer(apiCtx, addr)
+	}
 	return t
 }
 
