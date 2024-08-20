@@ -41,6 +41,10 @@ func (s *Scheduler) Run(ctx context.Context) {
 }
 
 func (s *Scheduler) Add(job *Job) {
+	if _, ok := s.jobs[job.Name]; ok {
+		logrus.Errorf("scheduler %s already exists", job.Name)
+		panic("scheduler " + job.Name + " already exists")
+	}
 	s.jobs[job.Name] = job
 }
 
