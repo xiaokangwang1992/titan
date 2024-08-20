@@ -10,9 +10,6 @@ package titan
 
 import (
 	"context"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/piaobeizu/titan/service"
 	"github.com/sirupsen/logrus"
@@ -24,7 +21,6 @@ type Titan struct {
 	cancel    context.CancelFunc
 	api       *service.ApiServer
 	scheduler *service.Scheduler
-	singal    chan os.Signal
 }
 
 func NewTitan(ctx context.Context, cancel context.CancelFunc, app string) *Titan {
@@ -34,11 +30,6 @@ func NewTitan(ctx context.Context, cancel context.CancelFunc, app string) *Titan
 		ctx:    ctx,
 		cancel: cancel,
 	}
-	// we need to register the signals
-	signal.Notify(e.singal, syscall.SIGTERM)
-	signal.Notify(e.singal, syscall.SIGINT)
-	signal.Notify(e.singal, syscall.SIGQUIT)
-	signal.Notify(e.singal, syscall.SIGHUP)
 	return e
 }
 
@@ -69,14 +60,7 @@ func (e *Titan) Start() {
 	if e.scheduler != nil {
 		e.scheduler.Start()
 	}
-	select {
-	case <-e.ctx.Done():
-		logrus.Info("context done, stop the titan")
-		return
-	case <-e.singal:
-		logrus.Info("receive signal, stop the titan")
-		return
-	}
+	<-e.ctx.Done()
 }
 
 func (e *Titan) Stop() {
