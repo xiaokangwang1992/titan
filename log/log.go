@@ -26,7 +26,7 @@ import (
 
 var Colorize = aurora.NewAurora(false)
 
-func InitCliLog(ctx *context.Context, mode string) error {
+func InitCliLog(ctx context.Context, mode string) error {
 	if strings.ToLower(mode) == "debug" {
 		logrus.SetLevel(logrus.DebugLevel)
 	} else if strings.ToLower(mode) == "trace" {
@@ -39,7 +39,7 @@ func InitCliLog(ctx *context.Context, mode string) error {
 	return initFileLogger("cli")
 }
 
-func logLevelFromCtx(ctx *context.Context, defaultLevel logrus.Level, mode string) logrus.Level {
+func logLevelFromCtx(ctx context.Context, defaultLevel logrus.Level, mode string) logrus.Level {
 	if strings.ToLower(mode) == "debug" {
 		return logrus.DebugLevel
 	} else if strings.ToLower(mode) == "trace" {
