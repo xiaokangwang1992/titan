@@ -145,3 +145,31 @@ func (r *Redis) LRem(key, value string, size int64) error {
 	}
 	return r.Client.LRem(context.TODO(), key, size, value).Err()
 }
+
+func (r *Redis) ZAdd(key string, members ...redis.Z) error {
+	if r.Client == nil {
+		return fmt.Errorf("redis client is nil")
+	}
+	return r.Client.ZAdd(context.TODO(), key, members...).Err()
+}
+
+func (r *Redis) ZRange(key string, start, stop int64) ([]string, error) {
+	if r.Client == nil {
+		return nil, fmt.Errorf("redis client is nil")
+	}
+	return r.Client.ZRange(context.TODO(), key, start, stop).Result()
+}
+
+func (r *Redis) ZRem(key string, members ...interface{}) error {
+	if r.Client == nil {
+		return fmt.Errorf("redis client is nil")
+	}
+	return r.Client.ZRem(context.TODO(), key, members...).Err()
+}
+
+func (r *Redis) ZAddXX(key string, member redis.Z) error {
+	if r.Client == nil {
+		return fmt.Errorf("redis client is nil")
+	}
+	return r.Client.ZAddXX(context.TODO(), key, member).Err()
+}
