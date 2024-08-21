@@ -27,15 +27,15 @@ type ApiServer struct {
 	apiAddr     string
 	middlewares map[string]map[string]any
 	handler     any
+	middleware  any
 }
 
-func NewApiServer(ctx context.Context, addr string, handler any) *ApiServer {
+func NewApiServer(ctx context.Context, addr string) *ApiServer {
 	return &ApiServer{
 		ctx:         ctx,
 		routes:      make(map[string]types.ApiGroup),
 		apiAddr:     addr,
 		middlewares: make(map[string]map[string]any),
-		handler:     handler,
 	}
 }
 
@@ -48,6 +48,14 @@ func (s *ApiServer) AddRoutes(group string, middlewares []string, routes []strin
 
 func (s *ApiServer) AddMiddlewares(middlewares map[string]map[string]any) {
 	s.middlewares = middlewares
+}
+
+func (s *ApiServer) AddHandler(handler any) {
+	s.handler = handler
+}
+
+func (s *ApiServer) AddMiddleware(middleware any) {
+	s.middleware = middleware
 }
 
 func (s *ApiServer) Start() {
@@ -126,7 +134,10 @@ func (s *ApiServer) callMiddleware(ms []string) (mfs []gin.HandlerFunc) {
 		}
 		args := s.middlewares[m]
 		m = strings.ToUpper(m[:1]) + m[1:] + "Middleware"
-		middleware := reflect.ValueOf(&ApiMiddleware{Args: args}).MethodByName(m).Interface()
+		if reflect.ValueOf(&s.middleware).Elem().FieldByName("Args").IsValid() {
+			reflect.ValueOf(&s.middleware).Elem().FieldByName("Args").Set(reflect.ValueOf(args))
+		}
+		middleware := reflect.ValueOf(&s.middleware).MethodByName(m).Interface()
 		if sampleFunc, ok := middleware.(func(c *gin.Context)); ok {
 			mfs = append(mfs, sampleFunc)
 		} else {
@@ -137,7 +148,7 @@ func (s *ApiServer) callMiddleware(ms []string) (mfs []gin.HandlerFunc) {
 }
 
 func (s *ApiServer) callHandler(f string) gin.HandlerFunc {
-	handler := reflect.ValueOf(s.handler).MethodByName(f).Interface()
+	handler := reflect.ValueOf(&s.handler).MethodByName(f).Interface()
 	// 使用类型断言获取具体的函数
 	if sampleFunc, ok := handler.(func(c *gin.Context)); ok {
 		// 调用具体的函数
