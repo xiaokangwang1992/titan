@@ -139,18 +139,15 @@ func (s *ApiServer) callMiddleware(ms []string) (mfs []gin.HandlerFunc) {
 		}
 		args := s.middlewares[m]
 		m = strings.ToUpper(m[:1]) + m[1:] + "Middleware"
-		logrus.Infof("call middleware: %s, %+v", m, reflect.ValueOf(s.middleware).Elem().FieldByName("Args").IsValid())
 		if !reflect.ValueOf(s.middleware).Elem().FieldByName("Args").IsValid() {
 			reflect.ValueOf(s.middleware).Elem().FieldByName("Args").Set(reflect.ValueOf(args))
 		}
-		logrus.Infof("call middleware: %s success", m)
 		middleware := reflect.ValueOf(s.middleware).MethodByName(m).Interface()
 		if sampleFunc, ok := middleware.(func(c *gin.Context)); ok {
 			mfs = append(mfs, sampleFunc)
 		} else {
 			panic("Conversion middlwware failed.")
 		}
-		logrus.Infof("call middleware: %s success", m)
 	}
 	return
 }
