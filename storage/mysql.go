@@ -33,7 +33,7 @@ func initDB(url string) error {
 	return nil
 }
 
-func AddModel(model interface{}) {
+func RegisterModel(model interface{}) {
 	models = append(models, model)
 }
 
