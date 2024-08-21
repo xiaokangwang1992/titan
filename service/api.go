@@ -155,25 +155,6 @@ type ApiHandler struct {
 	Response Response
 }
 
-func (h *ApiHandler) Demo(c *gin.Context) {
-	c.JSON(200, h.Success("ok"))
-}
-
-func (h *ApiHandler) ApiResponse(code int, message string, data any) Response {
-	h.Response.Code, h.Response.Message, h.Response.Data = code, message, data
-	return h.Response
-}
-
-func (h *ApiHandler) Success(data any) Response {
-	h.Response.Code, h.Response.Message, h.Response.Data = 0, "success", data
-	return h.Response
-}
-
-func (h *ApiHandler) Fail(data any) Response {
-	h.Response.Code, h.Response.Message, h.Response.Data = 1, "failed", data
-	return h.Response
-}
-
 type ApiMiddleware struct {
 	Args map[string]any
 }
