@@ -26,14 +26,16 @@ type ApiServer struct {
 	routes      map[string]types.ApiGroup
 	apiAddr     string
 	middlewares map[string]map[string]any
+	handler     any
 }
 
-func NewApiServer(ctx context.Context, addr string) *ApiServer {
+func NewApiServer(ctx context.Context, addr string, handler any) *ApiServer {
 	return &ApiServer{
 		ctx:         ctx,
 		routes:      make(map[string]types.ApiGroup),
 		apiAddr:     addr,
 		middlewares: make(map[string]map[string]any),
+		handler:     handler,
 	}
 }
 
@@ -135,7 +137,7 @@ func (s *ApiServer) callMiddleware(ms []string) (mfs []gin.HandlerFunc) {
 }
 
 func (s *ApiServer) callHandler(f string) gin.HandlerFunc {
-	handler := reflect.ValueOf(&ApiHandler{}).MethodByName(f).Interface()
+	handler := reflect.ValueOf(s.handler).MethodByName(f).Interface()
 	// 使用类型断言获取具体的函数
 	if sampleFunc, ok := handler.(func(c *gin.Context)); ok {
 		// 调用具体的函数
