@@ -12,6 +12,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"reflect"
 	"syscall"
 
 	"github.com/piaobeizu/titan/service"
@@ -92,7 +93,10 @@ func (t *Titan) Job(job *service.Job) *Titan {
 	if t.scheduler == nil {
 		panic("scheduler is nil")
 	}
-	t.scheduler.Add(job)
+	if reflect.ValueOf(job).Kind() != reflect.Ptr {
+		panic("job must be a pointer")
+	}
+	t.scheduler.AddJob(job)
 	return t
 }
 
