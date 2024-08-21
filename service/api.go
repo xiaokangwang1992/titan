@@ -118,13 +118,13 @@ func (s *ApiServer) bindRouter(r *gin.RouterGroup) {
 			handler := strings.TrimSpace(rs[2])
 			switch strings.ToUpper(method) {
 			case "GET":
-				rg.GET(path, s.callHandler(method, path, handler))
+				rg.GET(path, s.callHandler(handler))
 			case "POST":
-				rg.POST(path, s.callHandler(method, path, handler))
+				rg.POST(path, s.callHandler(handler))
 			case "PUT":
-				rg.PUT(path, s.callHandler(method, path, handler))
+				rg.PUT(path, s.callHandler(handler))
 			case "DELETE":
-				rg.DELETE(path, s.callHandler(method, path, handler))
+				rg.DELETE(path, s.callHandler(handler))
 			default:
 				panic(r + " method not support")
 			}
@@ -152,11 +152,11 @@ func (s *ApiServer) callMiddleware(ms []string) (mfs []gin.HandlerFunc) {
 	return
 }
 
-func (s *ApiServer) callHandler(m, p, f string) gin.HandlerFunc {
+func (s *ApiServer) callHandler(f string) gin.HandlerFunc {
 	handler := reflect.ValueOf(s.handler).MethodByName(f).Interface()
 	// 使用类型断言获取具体的函数
 	if sampleFunc, ok := handler.(func(c *gin.Context)); ok {
-		logrus.Debugf("[router] %-6s - %s %s", m, p, f)
+		// logrus.Debugf("[router] %-6s - %-16s %s", m, p, f)
 		// 调用具体的函数
 		return sampleFunc
 	} else {
