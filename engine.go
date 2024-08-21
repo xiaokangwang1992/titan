@@ -41,6 +41,22 @@ func (t *Titan) ApiServer(addr string) *Titan {
 	return t
 }
 
+func (t *Titan) Routers(group string, middlewares []string, routes []string) *Titan {
+	if t.api == nil {
+		panic("api is nil")
+	}
+	t.api.AddRoutes(group, middlewares, routes)
+	return t
+}
+
+func (t *Titan) Middlewares(middlewares map[string]map[string]any) *Titan {
+	if t.api == nil {
+		panic("api is nil")
+	}
+	t.api.AddMiddlewares(middlewares)
+	return t
+}
+
 func (t *Titan) Scheduler() *Titan {
 	schedCtx := context.WithoutCancel(t.ctx)
 	t.scheduler = service.NewScheduler(schedCtx)
