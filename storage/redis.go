@@ -1,65 +1,147 @@
-/*
- @Version : 1.0
- @Author  : steven.wong
- @Email   : 'wangxk1991@gamil.com'
- @Time    : 2024/01/24 17:30:35
- Desc     :
-*/
-
 package storage
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 )
 
 type Redis struct {
-	client *redis.Client
+	Client *redis.Client
 }
 
-func CheckRedis(url string) {
-	redis := NewRedisClient(url)
-	defer redis.Close()
+var redisClient *redis.Client
 
-	if err := redis.Set("test", "test", time.Duration(10)*time.Second); err != nil {
-		panic(err)
-	}
-}
-
-func NewRedisClient(url string) *Redis {
+func InitRedis(url string) {
+	// define redis options
 	opt, err := redis.ParseURL(url)
 	if err != nil {
 		panic(err)
 	}
-	rds := redis.NewClient(opt)
+	opt.MaxRetries = 3
+	opt.MaxIdleConns = 20
+	opt.MinIdleConns = 10
+	opt.MaxActiveConns = 80
+	opt.ReadTimeout = time.Duration(5) * time.Second
+	opt.WriteTimeout = time.Duration(5) * time.Second
+	opt.PoolSize = 80
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(20)*time.Second)
+	redisClient = redis.NewClient(opt)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(3)*time.Second)
 	defer cancel()
-	if _, err := rds.Ping(ctx).Result(); err != nil {
+	if _, err := redisClient.Ping(ctx).Result(); err != nil {
 		panic(err)
 	}
-
-	return &Redis{client: rds}
 }
 
-func (r *Redis) Close() {
-	r.client.Close()
+func RedisClient() *Redis {
+	if redisClient == nil {
+		panic("redis client is nil")
+	}
+	return &Redis{Client: redisClient}
 }
 
 func (r *Redis) Exists(key string) bool {
-	return r.client.Exists(context.Background(), key).Val() == 1
+	return r.Client.Exists(context.Background(), key).Val() == 1
+}
+
+func (r *Redis) Stats() *redis.PoolStats {
+	return r.Client.PoolStats()
 }
 
 func (r *Redis) Get(key string) (string, error) {
-	return r.client.Get(context.TODO(), key).Result()
+	if !r.Exists(key) {
+		return "", fmt.Errorf("key not found")
+	}
+	return r.Client.Get(context.TODO(), key).Result()
 }
 
-func (r *Redis) Set(key string, value interface{}, expiration time.Duration) error {
-	return r.client.Set(context.TODO(), key, value, expiration).Err()
+func (r *Redis) Set(key string, value any, exp int64) error {
+	if r.Client == nil {
+		return fmt.Errorf("redis client is nil")
+	}
+	return r.Client.Set(context.TODO(), key, value, time.Duration(exp)).Err()
 }
 
 func (r *Redis) Del(key string) error {
-	return r.client.Del(context.TODO(), key).Err()
+	if r.Client == nil {
+		return fmt.Errorf("redis client is nil")
+	}
+	return r.Client.Del(context.TODO(), key).Err()
+}
+
+func (r *Redis) LLen(key string) int64 {
+	if r.Client == nil {
+		return 0
+	}
+	return r.Client.LLen(context.TODO(), key).Val()
+}
+
+func (r *Redis) LRange(key string, start, stop int64) ([]string, error) {
+	if r.Client == nil {
+		return nil, fmt.Errorf("redis client is nil")
+	}
+	return r.Client.LRange(context.TODO(), key, start, stop).Result()
+}
+
+func (r *Redis) SAdd(key string, members ...string) error {
+	if r.Client == nil {
+		return fmt.Errorf("redis client is nil")
+	}
+	return r.Client.SAdd(context.TODO(), key, members).Err()
+}
+
+func (r *Redis) Sismembers(key string, member string) (bool, error) {
+	if r.Client == nil {
+		return false, fmt.Errorf("redis client is nil")
+	}
+	return r.Client.SIsMember(context.TODO(), key, member).Result()
+}
+
+func (r *Redis) SMembers(key string, members ...string) ([]string, error) {
+	if r.Client == nil {
+		return nil, fmt.Errorf("redis client is nil")
+	}
+	return r.Client.SMembers(context.TODO(), key).Result()
+}
+
+func (r *Redis) SRem(key string, members ...string) error {
+	if r.Client == nil {
+		return fmt.Errorf("redis client is nil")
+	}
+	return r.Client.SRem(context.TODO(), key, members).Err()
+}
+
+func (r *Redis) LPush(key string, values ...string) error {
+	if r.Client == nil {
+		return fmt.Errorf("redis client is nil")
+	}
+	return r.Client.LPush(context.TODO(), key, values).Err()
+}
+func (r *Redis) RPop(key string) (string, error) {
+	if r.Client == nil {
+		return "", fmt.Errorf("redis client is nil")
+	}
+	return r.Client.RPop(context.TODO(), key).Result()
+}
+
+func (r *Redis) RPush(key string, values ...string) error {
+	if r.Client == nil {
+		return fmt.Errorf("redis client is nil")
+	}
+	return r.Client.LPush(context.TODO(), key, values).Err()
+}
+func (r *Redis) LPop(key string) (string, error) {
+	if r.Client == nil {
+		return "", fmt.Errorf("redis client is nil")
+	}
+	return r.Client.LPop(context.TODO(), key).Result()
+}
+func (r *Redis) LRem(key, value string, size int64) error {
+	if r.Client == nil {
+		return fmt.Errorf("redis client is nil")
+	}
+	return r.Client.LRem(context.TODO(), key, size, value).Err()
 }
