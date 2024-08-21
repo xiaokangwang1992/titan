@@ -22,18 +22,16 @@ import (
 type Titan struct {
 	app       string
 	ctx       context.Context
-	cancel    context.CancelFunc
 	api       *service.ApiServer
 	scheduler *service.Scheduler
 	singal    chan os.Signal
 }
 
-func NewTitan(ctx context.Context, cancel context.CancelFunc, app string) *Titan {
+func NewTitan(ctx context.Context, app string) *Titan {
 	logrus.Infof("welcome to app %s", app)
 	e := &Titan{
 		app:    app,
 		ctx:    ctx,
-		cancel: cancel,
 		singal: make(chan os.Signal, 1),
 	}
 	signal.Notify(e.singal, syscall.SIGTERM)
@@ -118,12 +116,11 @@ func (e *Titan) Start() {
 }
 
 func (e *Titan) Stop() {
-	e.cancel()
-	if e.api != nil {
-		e.api.Stop()
-	}
 	if e.scheduler != nil {
 		e.scheduler.Stop()
+	}
+	if e.api != nil {
+		e.api.Stop()
 	}
 	logrus.Printf("titan stopped, byebye!")
 }
