@@ -115,7 +115,11 @@ func (e *Titan) Start() {
 
 func (e *Titan) Stop() {
 	e.cancel()
-	e.api.Stop()
-	e.scheduler.Stop()
+	if e.api != nil {
+		e.api.Stop()
+	}
+	if e.scheduler != nil {
+		e.scheduler.Stop()
+	}
 	logrus.Printf("titan stopped, byebye!")
 }

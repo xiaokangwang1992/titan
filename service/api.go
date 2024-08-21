@@ -96,12 +96,13 @@ func (s *ApiServer) Start() {
 
 func (s *ApiServer) Stop() {
 	// Wait for 5 seconds to finish processing
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	if err := s.srv.Shutdown(ctx); err != nil {
 		logrus.Fatalf("Failed to shutdown HTTP API service, because: %+v", err)
 	}
 	<-ctx.Done()
+	logrus.Info("HTTP API service shutdown.")
 }
 
 func (s *ApiServer) bindRouter(r *gin.RouterGroup) {

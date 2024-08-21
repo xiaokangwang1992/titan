@@ -81,7 +81,7 @@ func (s *Scheduler) Start() {
 
 func (s *Scheduler) Stop() {
 	s.Shutdown(s.ctx)
-	logrus.Infof("scheduler API service stopped")
+	logrus.Infof("scheduler service shutdown")
 }
 
 func callJob(job *Job) func() {
