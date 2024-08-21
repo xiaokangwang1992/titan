@@ -51,16 +51,21 @@ func (s *ApiServer) AddMiddlewares(middlewares map[string]map[string]any) {
 }
 
 func (s *ApiServer) AddHandler(handler any) {
+	if reflect.ValueOf(handler).Kind() != reflect.Ptr {
+		panic("handler must be a pointer")
+	}
 	s.handler = handler
 }
 
 func (s *ApiServer) AddMiddleware(middleware any) {
+	if reflect.ValueOf(middleware).Kind() != reflect.Ptr {
+		panic("middleware must be a pointer")
+	}
 	s.middleware = middleware
 }
 
 func (s *ApiServer) Start() {
 	logrus.Infof("start api service, listen on %s", s.apiAddr)
-
 	r := gin.Default()
 	s.bindRouter(r.Group("/api"))
 	r.GET("/healthz", func(c *gin.Context) {
@@ -134,21 +139,24 @@ func (s *ApiServer) callMiddleware(ms []string) (mfs []gin.HandlerFunc) {
 		}
 		args := s.middlewares[m]
 		m = strings.ToUpper(m[:1]) + m[1:] + "Middleware"
-		if reflect.ValueOf(&s.middleware).Elem().FieldByName("Args").IsValid() {
-			reflect.ValueOf(&s.middleware).Elem().FieldByName("Args").Set(reflect.ValueOf(args))
+		logrus.Infof("call middleware: %s, %+v", m, reflect.ValueOf(s.middleware).Elem().FieldByName("Args").IsValid())
+		if !reflect.ValueOf(s.middleware).Elem().FieldByName("Args").IsValid() {
+			reflect.ValueOf(s.middleware).Elem().FieldByName("Args").Set(reflect.ValueOf(args))
 		}
-		middleware := reflect.ValueOf(&s.middleware).MethodByName(m).Interface()
+		logrus.Infof("call middleware: %s success", m)
+		middleware := reflect.ValueOf(s.middleware).MethodByName(m).Interface()
 		if sampleFunc, ok := middleware.(func(c *gin.Context)); ok {
 			mfs = append(mfs, sampleFunc)
 		} else {
 			panic("Conversion middlwware failed.")
 		}
+		logrus.Infof("call middleware: %s success", m)
 	}
 	return
 }
 
 func (s *ApiServer) callHandler(f string) gin.HandlerFunc {
-	handler := reflect.ValueOf(&s.handler).MethodByName(f).Interface()
+	handler := reflect.ValueOf(s.handler).MethodByName(f).Interface()
 	// 使用类型断言获取具体的函数
 	if sampleFunc, ok := handler.(func(c *gin.Context)); ok {
 		// 调用具体的函数
