@@ -49,6 +49,22 @@ func (t *Titan) Routers(group string, middlewares []string, routes []string) *Ti
 	return t
 }
 
+func (t *Titan) Handler(handler any) *Titan {
+	if t.api == nil {
+		panic("api is nil")
+	}
+	t.api.AddHandler(handler)
+	return t
+}
+
+func (t *Titan) Middleware(middleware any) *Titan {
+	if t.api == nil {
+		panic("api is nil")
+	}
+	t.api.AddMiddleware(middleware)
+	return t
+}
+
 func (t *Titan) Middlewares(middlewares map[string]map[string]any) *Titan {
 	if t.api == nil {
 		panic("api is nil")
