@@ -154,7 +154,7 @@ func (m *LogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	}
 	lines := strings.Split(entry.Data["line"].(string), "/")
 	entry.Data["line"] = strings.Join(lines[len(lines)-2:], "/")
-	newLog = fmt.Sprintf("\x1b[%dm[%s] [%s] %-25s --- %s\x1b[0m\n",
+	newLog = fmt.Sprintf("\x1b[%dm[%s] [%s] %-26s --- %s\x1b[0m\n",
 		levelColor, levelMap[entry.Level.String()], timestamp, entry.Data["line"], msg)
 	if m.DisableColors {
 		newLog = fmt.Sprintf("[%s] [%s] %s --- %s\n",
