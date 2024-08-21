@@ -43,6 +43,7 @@ func (s *Scheduler) AddJob(job *Job) {
 
 func (s *Scheduler) Start() {
 	for _, job := range s.jobs {
+		logrus.Debugf("[job] %s", job.Name)
 		if err := s.cron.AddFunc(job.Cron, callJob(job)); err != nil {
 			logrus.Errorf("add job %s failed, because: %+v", job.Name, err)
 		}

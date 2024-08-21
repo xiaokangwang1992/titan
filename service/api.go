@@ -86,7 +86,6 @@ func (s *ApiServer) Start() {
 		Addr:    s.apiAddr,
 		Handler: r,
 	}
-
 	go func() {
 		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logrus.Fatalf("Failed to start HTTP API service, because: %+v", err)
