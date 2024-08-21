@@ -62,12 +62,12 @@ func (s *Scheduler) AddJob(job *Job) {
 	s.jobs[job.Name] = job
 }
 
-func (s *Scheduler) Shutdown() error {
-	for _, job := range s.jobs {
-		job.Cancel()
-	}
-	return nil
-}
+// func (s *Scheduler) Shutdown() error {
+// 	for _, job := range s.jobs {
+// 		job.Cancel()
+// 	}
+// 	return nil
+// }
 
 func (s *Scheduler) Start() {
 	for _, job := range s.jobs {
@@ -124,9 +124,7 @@ var (
 )
 
 type Job struct {
-	Ctx    context.Context
-	Cancel context.CancelFunc
-	Name   string
+	Name string
 	// Detail string
 	Cron   string
 	Method string
