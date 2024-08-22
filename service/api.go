@@ -25,17 +25,19 @@ type ApiServer struct {
 	srv         *http.Server
 	routes      map[string]types.ApiGroup
 	apiAddr     string
+	version     string
 	middlewares map[string]map[string]any
 	handler     any
 	middleware  any
 }
 
-func NewApiServer(ctx context.Context, addr string) *ApiServer {
+func NewApiServer(ctx context.Context, addr, version string) *ApiServer {
 	return &ApiServer{
 		ctx:         ctx,
 		routes:      make(map[string]types.ApiGroup),
 		apiAddr:     addr,
 		middlewares: make(map[string]map[string]any),
+		version:     version,
 	}
 }
 
@@ -67,7 +69,11 @@ func (s *ApiServer) AddMiddleware(middleware any) {
 func (s *ApiServer) Start() {
 	logrus.Infof("start api service, listen on %s", s.apiAddr)
 	r := gin.Default()
-	s.bindRouter(r.Group("/api"))
+	rg := r.Group("/api")
+	if s.version != "" {
+		rg = rg.Group("/" + s.version)
+	}
+	s.bindRouter(rg)
 	r.GET("/healthz", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status": "ok",
@@ -106,9 +112,6 @@ func (s *ApiServer) Stop() {
 
 func (s *ApiServer) bindRouter(r *gin.RouterGroup) {
 	for group, rs := range s.routes {
-		if rs.Version != "" {
-			r = r.Group("/" + rs.Version)
-		}
 		rg := r.Group("/" + group).Use(s.callMiddleware(rs.Middlewares)...)
 		for _, r := range rs.Routers {
 			rs := strings.Split(r, ",")

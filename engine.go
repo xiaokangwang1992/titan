@@ -41,10 +41,10 @@ func NewTitan(ctx context.Context, app string) *Titan {
 	return e
 }
 
-func (t *Titan) ApiServer(addr string) *Titan {
+func (t *Titan) ApiServer(addr, version string) *Titan {
 	if addr != "" {
 		apiCtx := context.WithoutCancel(t.ctx)
-		t.api = service.NewApiServer(apiCtx, addr)
+		t.api = service.NewApiServer(apiCtx, addr, version)
 	}
 	return t
 }

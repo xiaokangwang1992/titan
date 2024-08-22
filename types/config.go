@@ -41,7 +41,6 @@ type Middleware struct {
 }
 
 type ApiGroup struct {
-	Version     string   `yaml:"version,omitempty"`
 	Middlewares []string `yaml:"middlewares" default:"DefaultMiddleware"`
 	Routers     []string `yaml:"routers,omitempty"`
 }
@@ -52,6 +51,7 @@ type WebGroup struct {
 }
 
 type Http struct {
+	Version     string                    `yaml:"version,omitempty"`
 	ApiAddr     string                    `yaml:"api-addr,omitempty"`
 	Route       string                    `yaml:"route,omitempty"`
 	Routes      map[string]ApiGroup       `yaml:"routes,omitempty"`
