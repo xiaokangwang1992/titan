@@ -173,3 +173,10 @@ func (r *Redis) ZAddXX(key string, member redis.Z) error {
 	}
 	return r.Client.ZAddXX(context.TODO(), key, member).Err()
 }
+
+func (r *Redis) SetEx(key string, value any, exp time.Duration) error {
+	if r.Client == nil {
+		return nil
+	}
+	return r.Client.SetEx(context.TODO(), key, value, exp).Err()
+}
