@@ -180,3 +180,10 @@ func (r *Redis) SetEx(key string, value any, exp time.Duration) error {
 	}
 	return r.Client.SetEx(context.TODO(), key, value, exp).Err()
 }
+
+func (r *Redis) SCard(key string) (int64, error) {
+	if r.Client == nil {
+		return 0, fmt.Errorf("redis client is nil")
+	}
+	return r.Client.SCard(context.TODO(), key).Result()
+}
