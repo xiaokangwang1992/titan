@@ -41,6 +41,7 @@ type Middleware struct {
 }
 
 type ApiGroup struct {
+	Version     string   `yaml:"version,omitempty"`
 	Middlewares []string `yaml:"middlewares" default:"DefaultMiddleware"`
 	Routers     []string `yaml:"routers,omitempty"`
 }
