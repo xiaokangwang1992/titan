@@ -1,102 +1,24 @@
-// @Version : 1.0
-// @Author  : steven.wong
-// @Email   : 'wangxk1991@gamil.com'
-// @Time    : 2024/01/19 10:29:37
-// Desc     :
-// initLogging initializes the logger
+/*
+ @Version : 1.0
+ @Author  : steven.wong
+ @Email   : 'wwangxiaoakng@modelbest.cn'
+ @Time    : 2024/04/09 15:42:04
+ Desc     :
+*/
 
 package log
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"runtime"
+	"sort"
 	"strings"
-	"time"
 
-	"github.com/logrusorgru/aurora"
-	"github.com/piaobeizu/titan/cache"
-	"github.com/shiena/ansicolor"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
-
-var Colorize = aurora.NewAurora(false)
-
-func InitCliLog(ctx context.Context, mode string) error {
-	if strings.ToLower(mode) == "debug" {
-		logrus.SetLevel(logrus.DebugLevel)
-	} else if strings.ToLower(mode) == "trace" {
-		logrus.SetLevel(logrus.TraceLevel)
-	} else {
-		logrus.SetLevel(logrus.InfoLevel)
-	}
-	logrus.SetOutput(io.Discard)
-	initScreenLogger(logLevelFromCtx(ctx, logrus.InfoLevel, mode))
-	return initFileLogger("cli")
-}
-
-func logLevelFromCtx(ctx context.Context, defaultLevel logrus.Level, mode string) logrus.Level {
-	if strings.ToLower(mode) == "debug" {
-		return logrus.DebugLevel
-	} else if strings.ToLower(mode) == "trace" {
-		return logrus.TraceLevel
-	} else {
-		return defaultLevel
-	}
-}
-
-func initScreenLogger(lvl logrus.Level) {
-	logrus.AddHook(screenLoggerHook(lvl))
-}
-
-func screenLoggerHook(lvl logrus.Level) *Loghook {
-	l := &Loghook{
-		Skip: 5,
-		Formatter: &LogFormatter{
-			DisableColors:       false,
-			MsgLength:           -1,
-			ForceCutSpacialChar: false,
-		},
-	}
-
-	if runtime.GOOS == "windows" {
-		l.Writer = ansicolor.NewAnsiColorWriter(os.Stdout)
-	} else {
-		l.Writer = os.Stdout
-	}
-	l.SetLevel(lvl)
-
-	return l
-}
-
-func initFileLogger(logName string) error {
-	lf, err := LogFile(fmt.Sprintf("app-%s.%s.log", logName, time.Now().Local().Format("06-01-02")))
-	if err != nil {
-		return err
-	}
-	logrus.AddHook(fileLoggerHook(lf))
-	return nil
-}
-
-func fileLoggerHook(logFile io.Writer) *Loghook {
-	l := &Loghook{
-		Skip: 5,
-		Formatter: &LogFormatter{
-			DisableColors:       true,
-			MsgLength:           -1,
-			ForceCutSpacialChar: false,
-		},
-		Writer: logFile,
-	}
-
-	l.SetLevel(logrus.DebugLevel)
-
-	return l
-}
 
 const (
 	red    = 31
@@ -105,13 +27,13 @@ const (
 	green  = 32
 )
 
-type LogFormatter struct {
+type LoggerFormatter struct {
 	DisableColors       bool
 	MsgLength           int
 	ForceCutSpacialChar bool
 }
 
-func (m *LogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+func (m *LoggerFormatter) Format(entry *log.Entry) ([]byte, error) {
 	var (
 		b          *bytes.Buffer
 		newLog     string
@@ -128,13 +50,13 @@ func (m *LogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		}
 	)
 	switch entry.Level {
-	case logrus.DebugLevel, logrus.TraceLevel:
+	case log.DebugLevel, log.TraceLevel:
 		levelColor = blue
-	case logrus.WarnLevel:
+	case log.WarnLevel:
 		levelColor = yellow
-	case logrus.ErrorLevel, logrus.FatalLevel, logrus.PanicLevel:
+	case log.ErrorLevel, log.FatalLevel, log.PanicLevel:
 		levelColor = red
-	case logrus.InfoLevel:
+	case log.InfoLevel:
 		levelColor = green
 	default:
 		levelColor = green
@@ -144,7 +66,7 @@ func (m *LogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	} else {
 		b = &bytes.Buffer{}
 	}
-	timestamp := entry.Time.Format("2006-01-02 15:04:05")
+	timestamp := entry.Time.Format("2006-01-02 15:04:05.000")
 	msg = entry.Message
 	if m.MsgLength != -1 && len(entry.Message) > m.MsgLength {
 		msg = entry.Message[0:m.MsgLength]
@@ -152,69 +74,54 @@ func (m *LogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	if m.ForceCutSpacialChar {
 		msg = strings.Replace(msg, "\n", "", -1)
 	}
+
+	linestr := ""
 	lines := strings.Split(entry.Data["line"].(string), "/")
-	entry.Data["line"] = strings.Join(lines[len(lines)-2:], "/")
-	newLog = fmt.Sprintf("\x1b[%dm[%s] [%s] %-26s --- %s\x1b[0m\n",
-		levelColor, levelMap[entry.Level.String()], timestamp, entry.Data["line"], msg)
+	linestr += strings.Join(lines[len(lines)-2:], "/")
+	fields := []string{""}
+	for k, v := range entry.Data {
+		if k != "line" {
+			fields = append(fields, fmt.Sprintf("%s:%v", k, v))
+		}
+	}
+	sort.Strings(fields)
+	fields[0] = linestr
+	newLog += strings.Join(fields, "|")
+	newLog = fmt.Sprintf("\x1b[%dm[%s] [%s] %s --- %s\n\x1b[0m",
+		levelColor, levelMap[entry.Level.String()], timestamp, newLog, msg)
 	if m.DisableColors {
 		newLog = fmt.Sprintf("[%s] [%s] %s --- %s\n",
-			levelMap[entry.Level.String()], timestamp, entry.Data["line"], msg)
+			levelMap[entry.Level.String()], timestamp, newLog, msg)
 	}
+
 	b.WriteString(newLog)
 	return b.Bytes(), nil
-}
-
-func LogFile(file string) (io.Writer, error) {
-	logDir := cache.Dir()
-	if err := cache.EnsureDir(logDir); err != nil {
-		return nil, fmt.Errorf("error while creating log directory %s: %s", logDir, err.Error())
-	}
-
-	fn := path.Join(logDir, file)
-	logFile, err := os.OpenFile(fn, os.O_RDWR|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0600)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open log %s: %s", fn, err.Error())
-	}
-
-	_, _ = fmt.Fprintf(logFile, "\n[INFOO] [%s] - \"###### New session ######\"\n", time.Now().Local().Format("2006-01-02 15:04:05"))
-
-	return logFile, nil
 }
 
 type Loghook struct {
 	Skip      int
 	Writer    io.Writer
-	Formatter logrus.Formatter
+	Formatter log.Formatter
 
-	levels []logrus.Level
+	levels []log.Level
 }
 
-func (h *Loghook) SetLevel(level logrus.Level) {
-	h.levels = []logrus.Level{}
-	for _, l := range logrus.AllLevels {
+func (h *Loghook) SetLevel(level log.Level) {
+	h.levels = []log.Level{}
+	for _, l := range log.AllLevels {
 		if level >= l {
 			h.levels = append(h.levels, l)
 		}
 	}
 }
 
-func (h *Loghook) Levels() []logrus.Level {
+func (h *Loghook) Levels() []log.Level {
 	return h.levels
 }
 
 // Fire implement fire
-func (h *Loghook) Fire(entry *logrus.Entry) error {
+func (h *Loghook) Fire(entry *log.Entry) error {
 	file, line := findCaller(h.Skip)
-	// if !entry.HasCaller() {
-	// 	entry.Caller = &runtime.Frame{
-	// 		File: file,
-	// 		Line: line,
-	// 	}
-	// 	entry.Logger.ReportCaller = true
-	// }
-	// fmt.Printf("file,line is %s,%d\n", entry.Caller.File, entry.Caller.Line)
-	// l := len(fmt.Sprintf("%s:%d", file, line)) + 2
-	// entry.Data["line"] = fmt.Sprintf("%s%"+string(rune(l))+"s", fmt.Sprintf("%s:%d", file, line), "")[:l]
 	entry.Data["line"] = fmt.Sprintf("%s:%d", file, line)
 	msg, err := h.Formatter.Format(entry)
 	if err != nil {
@@ -225,6 +132,9 @@ func (h *Loghook) Fire(entry *logrus.Entry) error {
 	return err
 }
 
+// 对caller进行递归查询, 直到找到非logrus包产生的第一个调用.
+// 因为filename我获取到了上层目录名, 因此所有logrus包的调用的文件名都是 logrus/...
+// 因此通过排除logrus开头的文件名, 就可以排除所有logrus包的自己的函数调用
 func findCaller(skip int) (string, int) {
 	file := ""
 	line := 0
@@ -238,6 +148,10 @@ func findCaller(skip int) (string, int) {
 	// return fmt.Sprintf("%s:%d", file, line)
 }
 
+// 这里其实可以获取函数名称的: fnName := runtime.FuncForPC(pc).Name()
+// 但是我觉得有 文件名和行号就够定位问题, 因此忽略了caller返回的第一个值:pc
+// 在标准库log里面我们可以选择记录文件的全路径或者文件名, 但是在使用过程成并发最合适的,
+// 因为文件的全路径往往很长, 而文件名在多个包中往往有重复, 因此这里选择多取一层, 取到文件所在的上层目录那层.
 func getCaller(skip int) (string, int) {
 	_, file, line, ok := runtime.Caller(skip)
 	if !ok {
@@ -254,4 +168,28 @@ func getCaller(skip int) (string, int) {
 		}
 	}
 	return file, line
+}
+
+func InitLog() {
+	level := log.InfoLevel
+	if os.Getenv("D2_DEBUG_MODE") == "debug" {
+		level = log.DebugLevel
+	}
+	log.SetOutput(io.Discard)
+	log.AddHook(loggerHook(level))
+}
+
+func loggerHook(lvl log.Level) *Loghook {
+	l := &Loghook{
+		Skip: 5,
+		Formatter: &LoggerFormatter{
+			DisableColors:       false,
+			MsgLength:           -1,
+			ForceCutSpacialChar: false,
+		},
+	}
+	l.Writer = os.Stdout
+	l.SetLevel(lvl)
+
+	return l
 }
