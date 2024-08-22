@@ -170,9 +170,12 @@ func getCaller(skip int) (string, int) {
 	return file, line
 }
 
-func InitLog() {
+func InitLog(logMode string) {
 	level := log.InfoLevel
-	if os.Getenv("D2_DEBUG_MODE") == "debug" {
+	if logMode == "" {
+		logMode = os.Getenv("D2_DEBUG_MODE")
+	}
+	if logMode == "" {
 		level = log.DebugLevel
 	}
 	log.SetOutput(io.Discard)
