@@ -9,9 +9,8 @@
 package service
 
 import (
-	"log"
-
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 type ClientChan chan string
@@ -49,12 +48,12 @@ func (stream *event) listen() {
 		// Add new available client
 		case client := <-stream.newClients:
 			stream.totalClients[client] = true
-			log.Printf("Client added. %d registered clients", len(stream.totalClients))
+			logrus.Infof("Client added. %d registered clients", len(stream.totalClients))
 		// Remove closed client
 		case client := <-stream.closedClients:
 			delete(stream.totalClients, client)
 			close(client)
-			log.Printf("Removed client. %d registered clients", len(stream.totalClients))
+			logrus.Infof("Removed client. %d registered clients", len(stream.totalClients))
 		// Broadcast message to client
 		case eventMsg := <-stream.message:
 			for clientMessageChan := range stream.totalClients {
@@ -74,7 +73,7 @@ func (stream *event) serveHTTP() gin.HandlerFunc {
 			// Send closed connection to event server
 			stream.closedClients <- clientChan
 		}()
-		c.Set("clientChan", clientChan)
+		c.Set("sse-client", clientChan)
 		c.Next()
 	}
 }
