@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	DB     *gorm.DB
+	gormDB *gorm.DB
 	models = []interface{}{}
 )
 
@@ -26,10 +26,10 @@ func initDB(url string) error {
 	db, err := gorm.Open(mysql.Open(mysqlUrl))
 
 	if err != nil {
-		logrus.Fatalf("Failed to connect to mysql: %+v", err)
+		logrus.Errorf("Failed to connect to mysql: %+v", err)
 		return err
 	}
-	DB = db
+	gormDB = db
 	return nil
 }
 
@@ -37,11 +37,18 @@ func RegisterModel(model interface{}) {
 	models = append(models, model)
 }
 
+func DB() *gorm.DB {
+	if gormDB == nil {
+		panic("db is nil")
+	}
+	return gormDB
+}
+
 func Migrate(url string) error {
 	if err := initDB(url); err != nil {
-		return err
+		panic(err)
 	}
-	return DB.AutoMigrate(
+	return gormDB.AutoMigrate(
 		models...,
 	)
 }
