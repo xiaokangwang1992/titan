@@ -29,6 +29,7 @@ type ApiServer struct {
 	middlewares map[string]map[string]any
 	handler     any
 	middleware  any
+	stream      *event
 }
 
 func NewApiServer(ctx context.Context, addr, version string) *ApiServer {
@@ -41,10 +42,11 @@ func NewApiServer(ctx context.Context, addr, version string) *ApiServer {
 	}
 }
 
-func (s *ApiServer) AddRoutes(group string, middlewares []string, routes []string) {
+func (s *ApiServer) AddRoutes(group string, middlewares []string, routes []string, sses []string) {
 	s.routes[group] = types.ApiGroup{
 		Middlewares: middlewares,
 		Routers:     routes,
+		Sses:        sses,
 	}
 }
 
@@ -112,32 +114,53 @@ func (s *ApiServer) Stop() {
 
 func (s *ApiServer) bindRouter(r *gin.RouterGroup) {
 	for group, rs := range s.routes {
-		rg := r.Group("/" + group).Use(s.callMiddleware(rs.Middlewares)...)
-		for _, r := range rs.Routers {
-			rs := strings.Split(r, ",")
-			if len(rs) != 3 {
-				panic(r + " route config error")
+		if len(rs.Routers) > 0 {
+			rg := r.Group("/" + group).Use(s.callMiddleware(rs.Middlewares, false)...)
+			for _, r := range rs.Routers {
+				rs := strings.Split(r, ",")
+				if len(rs) != 3 {
+					panic(r + " route config error")
+				}
+				path := strings.TrimSpace(rs[0])
+				method := strings.TrimSpace(rs[1])
+				handler := strings.TrimSpace(rs[2])
+				switch strings.ToUpper(method) {
+				case "GET":
+					rg.GET(path, s.callHandler(handler))
+				case "POST":
+					rg.POST(path, s.callHandler(handler))
+				case "PUT":
+					rg.PUT(path, s.callHandler(handler))
+				case "DELETE":
+					rg.DELETE(path, s.callHandler(handler))
+				default:
+					panic(r + " method not support")
+				}
 			}
-			path := strings.TrimSpace(rs[0])
-			method := strings.TrimSpace(rs[1])
-			handler := strings.TrimSpace(rs[2])
-			switch strings.ToUpper(method) {
-			case "GET":
+		}
+		if len(rs.Sses) > 0 {
+			s.stream = newEvent()
+			rg := r.Group("/sse/" + group).Use(s.callMiddleware(rs.Middlewares, true)...)
+			for _, sse := range rs.Sses {
+				ss := strings.Split(sse, ",")
+				if len(ss) != 2 {
+					panic(sse + " sse config error")
+				}
+				path := strings.TrimSpace(ss[0])
+				handler := strings.TrimSpace(ss[1])
 				rg.GET(path, s.callHandler(handler))
-			case "POST":
-				rg.POST(path, s.callHandler(handler))
-			case "PUT":
-				rg.PUT(path, s.callHandler(handler))
-			case "DELETE":
-				rg.DELETE(path, s.callHandler(handler))
-			default:
-				panic(r + " method not support")
 			}
 		}
 	}
 }
 
-func (s *ApiServer) callMiddleware(ms []string) (mfs []gin.HandlerFunc) {
+func (s *ApiServer) callMiddleware(ms []string, sse bool) (mfs []gin.HandlerFunc) {
+	if sse {
+		mfs = append(mfs, sseHeadersMiddleware())
+		if s.stream != nil {
+			mfs = append(mfs, s.stream.serveHTTP())
+		}
+	}
 	for _, m := range ms {
 		if _, ok := s.middlewares[m]; !ok {
 			panic("middleware in route not found in http config.")

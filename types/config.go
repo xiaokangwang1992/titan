@@ -43,6 +43,7 @@ type Middleware struct {
 type ApiGroup struct {
 	Middlewares []string `yaml:"middlewares" default:"DefaultMiddleware"`
 	Routers     []string `yaml:"routers,omitempty"`
+	Sses        []string `yaml:"sses,omitempty"`
 }
 
 type WebGroup struct {

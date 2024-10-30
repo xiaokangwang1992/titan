@@ -49,11 +49,11 @@ func (t *Titan) ApiServer(addr, version string) *Titan {
 	return t
 }
 
-func (t *Titan) Routers(group string, middlewares []string, routes []string) *Titan {
+func (t *Titan) Routers(group string, middlewares []string, routes []string, sses []string) *Titan {
 	if t.api == nil {
 		panic("api is nil")
 	}
-	t.api.AddRoutes(group, middlewares, routes)
+	t.api.AddRoutes(group, middlewares, routes, sses)
 	return t
 }
 
