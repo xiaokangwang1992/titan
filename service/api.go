@@ -143,12 +143,20 @@ func (s *ApiServer) bindRouter(r *gin.RouterGroup) {
 			rg := r.Group("/sse/" + group).Use(s.callMiddleware(rs.Middlewares, true)...)
 			for _, sse := range rs.Sses {
 				ss := strings.Split(sse, ",")
-				if len(ss) != 2 {
+				if len(ss) != 3 {
 					panic(sse + " sse config error")
 				}
 				path := strings.TrimSpace(ss[0])
-				handler := strings.TrimSpace(ss[1])
-				rg.GET(path, s.callHandler(handler))
+				method := strings.TrimSpace(ss[1])
+				handler := strings.TrimSpace(ss[2])
+				switch strings.ToUpper(method) {
+				case "GET":
+					rg.GET(path, s.callHandler(handler))
+				case "POST":
+					rg.POST(path, s.callHandler(handler))
+				default:
+					panic(sse + " method not support")
+				}
 			}
 		}
 	}
