@@ -15,6 +15,7 @@ import (
 	"reflect"
 	"syscall"
 
+	"github.com/piaobeizu/titan/log"
 	"github.com/piaobeizu/titan/service"
 	"github.com/sirupsen/logrus"
 )
@@ -25,26 +26,29 @@ type Titan struct {
 	api       *service.ApiServer
 	scheduler *service.Scheduler
 	singal    chan os.Signal
+	log       *logrus.Entry
 }
 
 func NewTitan(ctx context.Context, app string) *Titan {
-	logrus.Infof("welcome to app %s", app)
+	log.InitLog(app, "")
 	e := &Titan{
 		app:    app,
 		ctx:    ctx,
 		singal: make(chan os.Signal, 1),
+		log:    logrus.WithField("app", app),
 	}
 	signal.Notify(e.singal, syscall.SIGTERM)
 	signal.Notify(e.singal, syscall.SIGINT)
 	signal.Notify(e.singal, syscall.SIGQUIT)
 	signal.Notify(e.singal, syscall.SIGHUP)
+	e.log.Infof("welcome to app %s", app)
 	return e
 }
 
 func (t *Titan) ApiServer(addr, version string) *Titan {
 	if addr != "" {
 		apiCtx := context.WithoutCancel(t.ctx)
-		t.api = service.NewApiServer(apiCtx, addr, version)
+		t.api = service.NewApiServer(apiCtx, addr, version, t.log)
 	}
 	return t
 }
@@ -83,7 +87,7 @@ func (t *Titan) Middlewares(middlewares map[string]map[string]any) *Titan {
 
 func (t *Titan) Scheduler() *Titan {
 	schedCtx := context.WithoutCancel(t.ctx)
-	t.scheduler = service.NewScheduler(schedCtx)
+	t.scheduler = service.NewScheduler(schedCtx, t.log)
 	return t
 }
 
@@ -107,10 +111,10 @@ func (e *Titan) Start() {
 	}
 	select {
 	case <-e.ctx.Done():
-		logrus.Info("context done, stop the titan")
+		e.log.Info("context done, stop the titan")
 		return
 	case <-e.singal:
-		logrus.Info("receive signal, stop the titan")
+		e.log.Info("receive signal, stop the titan")
 		return
 	}
 }
@@ -122,5 +126,5 @@ func (e *Titan) Stop() {
 	if e.api != nil {
 		e.api.Stop()
 	}
-	logrus.Printf("titan stopped, byebye!")
+	e.log.Info("titan stopped, byebye!")
 }

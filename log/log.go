@@ -13,10 +13,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"runtime"
 	"sort"
 	"strings"
+	"time"
 
+	"github.com/piaobeizu/titan/cache"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -170,7 +174,7 @@ func getCaller(skip int) (string, int) {
 	return file, line
 }
 
-func InitLog(logMode string) {
+func InitLog(app, logMode string) {
 	level := log.InfoLevel
 	if logMode == "" {
 		logMode = os.Getenv("D2_DEBUG_MODE")
@@ -180,6 +184,14 @@ func InitLog(logMode string) {
 	}
 	log.SetOutput(io.Discard)
 	log.AddHook(loggerHook(level))
+
+	if os.Getenv("LOG_FILE_PATH") != "" {
+		lf, err := logFile(fmt.Sprintf("app-%s.%s.log", app, time.Now().Local().Format("06-01-02")))
+		if err != nil {
+			panic(err)
+		}
+		logrus.AddHook(fileLoggerHook(lf))
+	}
 }
 
 func loggerHook(lvl log.Level) *Loghook {
@@ -195,4 +207,37 @@ func loggerHook(lvl log.Level) *Loghook {
 	l.SetLevel(lvl)
 
 	return l
+}
+
+func fileLoggerHook(logFile io.Writer) *Loghook {
+	l := &Loghook{
+		Skip: 5,
+		Formatter: &LoggerFormatter{
+			DisableColors:       true,
+			MsgLength:           -1,
+			ForceCutSpacialChar: false,
+		},
+		Writer: logFile,
+	}
+
+	l.SetLevel(logrus.DebugLevel)
+
+	return l
+}
+
+func logFile(file string) (io.Writer, error) {
+	logDir := cache.Dir()
+	if err := cache.EnsureDir(logDir); err != nil {
+		return nil, fmt.Errorf("error while creating log directory %s: %s", logDir, err.Error())
+	}
+
+	fn := path.Join(logDir, file)
+	logFile, err := os.OpenFile(fn, os.O_RDWR|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0600)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open log %s: %s", fn, err.Error())
+	}
+
+	_, _ = fmt.Fprintf(logFile, "\n[INFOO] [%s] - \"###### New session ######\"\n", time.Now().Local().Format("2006-01-02 15:04:05"))
+
+	return logFile, nil
 }

@@ -48,12 +48,12 @@ func (stream *event) listen() {
 		// Add new available client
 		case client := <-stream.newClients:
 			stream.totalClients[client] = true
-			logrus.Infof("Client added. %d registered clients", len(stream.totalClients))
+			logrus.Infof("added client. %d registered clients", len(stream.totalClients))
 		// Remove closed client
 		case client := <-stream.closedClients:
 			delete(stream.totalClients, client)
 			close(client)
-			logrus.Infof("Removed client. %d registered clients", len(stream.totalClients))
+			logrus.Infof("removed client. %d registered clients", len(stream.totalClients))
 		// Broadcast message to client
 		case eventMsg := <-stream.message:
 			for clientMessageChan := range stream.totalClients {

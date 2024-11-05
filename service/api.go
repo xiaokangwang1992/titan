@@ -30,15 +30,17 @@ type ApiServer struct {
 	handler     any
 	middleware  any
 	stream      *event
+	log         *logrus.Entry
 }
 
-func NewApiServer(ctx context.Context, addr, version string) *ApiServer {
+func NewApiServer(ctx context.Context, addr, version string, log *logrus.Entry) *ApiServer {
 	return &ApiServer{
 		ctx:         ctx,
 		routes:      make(map[string]types.ApiGroup),
 		apiAddr:     addr,
 		middlewares: make(map[string]map[string]any),
 		version:     version,
+		log:         log,
 	}
 }
 
@@ -69,7 +71,7 @@ func (s *ApiServer) AddMiddleware(middleware any) {
 }
 
 func (s *ApiServer) Start() {
-	logrus.Infof("start api service, listen on %s", s.apiAddr)
+	s.log.Infof("start api service, listen on %s", s.apiAddr)
 	r := gin.Default()
 	rg := r.Group("/api")
 	if s.version != "" {
@@ -96,7 +98,7 @@ func (s *ApiServer) Start() {
 	}
 	go func() {
 		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logrus.Fatalf("Failed to start HTTP API service, because: %+v", err)
+			s.log.Fatalf("Failed to start HTTP API service, because: %+v", err)
 		}
 	}()
 }
@@ -106,10 +108,10 @@ func (s *ApiServer) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	if err := s.srv.Shutdown(ctx); err != nil {
-		logrus.Fatalf("Failed to shutdown HTTP API service, because: %+v", err)
+		s.log.Fatalf("Failed to shutdown HTTP API service, because: %+v", err)
 	}
 	<-ctx.Done()
-	logrus.Info("HTTP API service shutdown.")
+	s.log.Info("HTTP API service shutdown.")
 }
 
 func (s *ApiServer) bindRouter(r *gin.RouterGroup) {
