@@ -48,11 +48,9 @@ require (
 	github.com/aws/aws-sdk-go v1.55.5
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/gin-gonic/gin v1.10.0
-	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/panjf2000/ants/v2 v2.10.0
 	github.com/redis/go-redis/v9 v9.6.1
 	github.com/robfig/cron v1.2.0
-	github.com/shiena/ansicolor v0.0.0-20230509054315-a9deabde6e02
 	golang.org/x/sys v0.24.0
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0
