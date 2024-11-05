@@ -29,8 +29,8 @@ type Titan struct {
 	log       *logrus.Entry
 }
 
-func NewTitan(ctx context.Context, app string) *Titan {
-	log.InitLog(app, "")
+func NewTitan(ctx context.Context, app, logMode string) *Titan {
+	log.InitLog(app, logMode)
 	e := &Titan{
 		app:    app,
 		ctx:    ctx,
