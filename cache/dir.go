@@ -23,7 +23,7 @@ func Dir() string {
 func defaultdir() string {
 	switch runtime.GOOS {
 	case "linux":
-		return "/var/cache/apollo"
+		return "/var/cache/titan"
 	case "darwin":
 		home, _ := os.UserHomeDir()
 		return path.Join(home, "Library", "Caches", "deepai")
