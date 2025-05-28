@@ -48,6 +48,7 @@ require (
 	github.com/aws/aws-sdk-go v1.55.5
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/gin-gonic/gin v1.10.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/panjf2000/ants/v2 v2.10.0
 	github.com/redis/go-redis/v9 v9.6.1
 	github.com/robfig/cron v1.2.0
