@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/piaobeizu/titan/types"
 	"github.com/sirupsen/logrus"
 )
@@ -31,6 +32,7 @@ type ApiServer struct {
 	middleware  any
 	stream      *event
 	log         *logrus.Entry
+	ws          *WebSocketServer
 }
 
 func NewApiServer(ctx context.Context, addr, version string, log *logrus.Entry) *ApiServer {
@@ -44,11 +46,12 @@ func NewApiServer(ctx context.Context, addr, version string, log *logrus.Entry) 
 	}
 }
 
-func (s *ApiServer) AddRoutes(group string, middlewares []string, routes []string, sses []string) {
+func (s *ApiServer) AddRoutes(group string, middlewares, routes, sses, websockets []string) {
 	s.routes[group] = types.ApiGroup{
 		Middlewares: middlewares,
 		Routers:     routes,
 		Sses:        sses,
+		WebSockets:  websockets,
 	}
 }
 
@@ -72,6 +75,7 @@ func (s *ApiServer) AddMiddleware(middleware any) {
 
 func (s *ApiServer) Start() {
 	s.log.Infof("start api service, listen on %s", s.apiAddr)
+
 	r := gin.Default()
 	rg := r.Group("/api")
 	if s.version != "" {
@@ -107,6 +111,14 @@ func (s *ApiServer) Stop() {
 	// Wait for 5 seconds to finish processing
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
+	if s.ws != nil {
+		s.ws.mu.Lock()
+		for clientID := range s.ws.connections {
+			s.ws.connections[clientID].Close()
+			delete(s.ws.connections, clientID)
+		}
+		s.ws.mu.Unlock()
+	}
 	if err := s.srv.Shutdown(ctx); err != nil {
 		s.log.Fatalf("Failed to shutdown HTTP API service, because: %+v", err)
 	}
@@ -161,6 +173,23 @@ func (s *ApiServer) bindRouter(r *gin.RouterGroup) {
 				}
 			}
 		}
+		if len(rs.WebSockets) > 0 {
+			s.ws = NewWebSocketServer(s.ctx, s.apiAddr, s.version, s.log)
+			go s.ws.handleBroadcast()
+
+			rg := r.Group("/ws/" + group).Use(s.callMiddleware(rs.Middlewares, false)...)
+			for _, ws := range rs.WebSockets {
+				wss := strings.Split(ws, ",")
+				if len(wss) != 2 {
+					panic(ws + " websocket config error, format: path,handler")
+				}
+				path := strings.TrimSpace(wss[0])
+				handler := strings.TrimSpace(wss[1])
+				// WebSocket 只支持 GET 方法进行升级
+				rg.GET(path, s.callWSHandler(handler))
+				s.log.Infof("registered WebSocket route: /api/ws/%s/%s", group, path)
+			}
+		}
 	}
 }
 
@@ -199,6 +228,79 @@ func (s *ApiServer) callHandler(f string) gin.HandlerFunc {
 		return sampleFunc
 	} else {
 		panic("Conversion handler failed.")
+	}
+}
+
+// createWSHandler 创建 WebSocket 处理器
+func (s *ApiServer) callWSHandler(handlerName string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 获取客户端ID
+		clientID := c.Query("client_id")
+		if clientID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "missing client_id parameter"})
+			return
+		}
+
+		// 升级到 WebSocket 连接
+		conn, err := s.ws.upgrader.Upgrade(c.Writer, c.Request, nil)
+		if err != nil {
+			s.log.Errorf("websocket upgrade failed: %v", err)
+			return
+		}
+		defer conn.Close()
+
+		// 注册连接
+		s.ws.mu.Lock()
+		s.ws.connections[clientID] = conn
+		s.ws.mu.Unlock()
+		s.log.Infof("websocket connection established: %s", clientID)
+
+		// 清理连接
+		defer func() {
+			s.ws.mu.Lock()
+			delete(s.ws.connections, clientID)
+			s.ws.mu.Unlock()
+			s.log.Infof("websocket connection closed: %s", clientID)
+		}()
+
+		// 发送欢迎消息
+		welcomeMsg := WSMessage{
+			Type:      "welcome",
+			Data:      "Connected to WebSocket server",
+			Timestamp: time.Now(),
+			ClientID:  clientID,
+		}
+		s.ws.Send(clientID, welcomeMsg)
+
+		// 获取处理器方法
+		handler := reflect.ValueOf(s.handler).MethodByName(handlerName).Interface()
+		if wsHandler, ok := handler.(func(*gin.Context, *websocket.Conn, *WSMessage)); ok {
+			// 消息处理循环
+			for {
+				select {
+				case <-s.ctx.Done():
+					s.log.Infof("websocket connection closed: %s", clientID)
+					return
+				default:
+					var msg WSMessage
+					if err := conn.ReadJSON(&msg); err != nil {
+						if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+							s.log.Errorf("websocket read message failed: %v", err)
+						}
+						break
+					}
+
+					// 设置消息元数据
+					msg.ClientID = clientID
+					msg.Timestamp = time.Now()
+
+					// 调用处理器
+					wsHandler(c, conn, &msg)
+				}
+			}
+		} else {
+			s.log.Errorf("WebSocket handler %s conversion failed", handlerName)
+		}
 	}
 }
 
