@@ -292,10 +292,11 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 				default:
 					var msg WSMessage
 					if err := conn.ReadJSON(&msg); err != nil {
+						s.log.Errorf("websocket read message failed: %v", err)
 						if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 							s.log.Errorf("websocket read message failed: %v", err)
 						}
-						break
+						return
 					}
 
 					// 设置消息元数据
