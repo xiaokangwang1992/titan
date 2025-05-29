@@ -245,7 +245,7 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 		// 获取客户端ID
 		clientID := c.Query("client_id")
 		if clientID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "missing client_id parameter"})
+			s.log.Errorf("missing client_id parameter")
 			return
 		}
 
@@ -273,9 +273,9 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 
 		// 发送欢迎消息
 		welcomeMsg := WSMessage{
-			Type:      "welcome",
+			Type:      WSMSG_TYPE_WELCOME,
 			Data:      "Connected to WebSocket server",
-			Timestamp: time.Now(),
+			Timestamp: time.Now().Unix(),
 			ClientID:  clientID,
 		}
 		s.ws.Send(clientID, welcomeMsg)
@@ -300,7 +300,7 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 
 					// 设置消息元数据
 					msg.ClientID = clientID
-					msg.Timestamp = time.Now()
+					msg.Timestamp = time.Now().Unix()
 
 					// 调用处理器
 					wsHandler(c, conn, &msg)

@@ -13,18 +13,23 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 )
 
+type WSMSG_TYPE string
+
+const (
+	WSMSG_TYPE_WELCOME WSMSG_TYPE = "welcome"
+)
+
 // WebSocket 相关类型定义
 type WSMessage struct {
-	Type      string         `json:"type"`
+	Type      WSMSG_TYPE     `json:"type"`
 	Data      any            `json:"data"`
-	Timestamp time.Time      `json:"timestamp"`
+	Timestamp int64          `json:"timestamp"`
 	ClientID  string         `json:"client_id,omitempty"`
 	RequestID string         `json:"request_id,omitempty"`
 	Metadata  map[string]any `json:"metadata,omitempty"`
