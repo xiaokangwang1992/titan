@@ -29,6 +29,7 @@ type ApiServer struct {
 	version     string
 	middlewares map[string]map[string]any
 	handler     any
+	wsHandler   any
 	middleware  any
 	stream      *event
 	log         *logrus.Entry
@@ -64,6 +65,13 @@ func (s *ApiServer) AddHandler(handler any) {
 		panic("handler must be a pointer")
 	}
 	s.handler = handler
+}
+
+func (s *ApiServer) AddWSHandler(handler any) {
+	if reflect.ValueOf(handler).Kind() != reflect.Ptr {
+		panic("handler must be a pointer")
+	}
+	s.wsHandler = handler
 }
 
 func (s *ApiServer) AddMiddleware(middleware any) {
@@ -232,7 +240,7 @@ func (s *ApiServer) callHandler(f string) gin.HandlerFunc {
 }
 
 // createWSHandler 创建 WebSocket 处理器
-func (s *ApiServer) callWSHandler(handlerName string) gin.HandlerFunc {
+func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 获取客户端ID
 		clientID := c.Query("client_id")
@@ -273,7 +281,7 @@ func (s *ApiServer) callWSHandler(handlerName string) gin.HandlerFunc {
 		s.ws.Send(clientID, welcomeMsg)
 
 		// 获取处理器方法
-		handler := reflect.ValueOf(s.handler).MethodByName(handlerName).Interface()
+		handler := reflect.ValueOf(s.wsHandler).MethodByName(f).Interface()
 		if wsHandler, ok := handler.(func(*gin.Context, *websocket.Conn, *WSMessage)); ok {
 			// 消息处理循环
 			for {
@@ -299,7 +307,7 @@ func (s *ApiServer) callWSHandler(handlerName string) gin.HandlerFunc {
 				}
 			}
 		} else {
-			s.log.Errorf("WebSocket handler %s conversion failed", handlerName)
+			s.log.Errorf("WebSocket handler %s conversion failed", f)
 		}
 	}
 }
