@@ -69,6 +69,14 @@ func (t *Titan) Handler(handler any) *Titan {
 	return t
 }
 
+func (t *Titan) WSHandler(handler any) *Titan {
+	if t.api == nil {
+		panic("api is nil")
+	}
+	t.api.AddWSHandler(handler)
+	return t
+}
+
 func (t *Titan) Middleware(middleware any) *Titan {
 	if t.api == nil {
 		panic("api is nil")
