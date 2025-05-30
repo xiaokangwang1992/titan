@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"runtime"
 	"strings"
 	"text/template"
@@ -107,7 +108,7 @@ func RemoveRepeatedElement(arr []string) (newArr []string) {
 }
 
 // toYaml 将数据转换为 YAML 格式
-func toYaml(v interface{}) (string, error) {
+func toYaml(v any) (string, error) {
 	data, err := yaml.Marshal(v)
 	if err != nil {
 		return "", err
@@ -167,4 +168,11 @@ func getCaller(skip int) (string, int) {
 		}
 	}
 	return file, line
+}
+
+func GetEnv(key, value string) string {
+	if env := os.Getenv(key); env != "" {
+		return env
+	}
+	return value
 }

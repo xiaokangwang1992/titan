@@ -31,7 +31,7 @@ type SubmitOptions struct {
 	Timedout int64
 }
 
-func handlepanic(i interface{}) {
+func handlepanic(i any) {
 
 }
 
