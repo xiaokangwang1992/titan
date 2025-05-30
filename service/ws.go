@@ -23,6 +23,7 @@ type WSMSG_TYPE string
 
 const (
 	WSMSG_TYPE_WELCOME WSMSG_TYPE = "welcome"
+	WSMSG_TYPE_PING    WSMSG_TYPE = "ping"
 )
 
 // WebSocket 相关类型定义
