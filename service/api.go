@@ -293,7 +293,7 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 					var msg WSMessage
 					if err := conn.ReadJSON(&msg); err != nil {
 						s.log.Errorf("websocket read message failed: %v", err)
-						if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+						if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure, websocket.CloseNoStatusReceived) {
 							s.log.Errorf("websocket read message failed: %v", err)
 						}
 						return
