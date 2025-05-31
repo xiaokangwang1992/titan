@@ -37,7 +37,7 @@ type WSMessage struct {
 }
 
 type WSBroadcastMessage struct {
-	Message WSMessage
+	Message any
 	Group   string
 }
 
@@ -69,11 +69,7 @@ func NewWebSocketServer(ctx context.Context, addr, version string, log *logrus.E
 	}
 }
 
-func (s *WebSocketServer) send(conn *websocket.Conn, msg WSMessage) error {
-	return conn.WriteJSON(msg)
-}
-
-func (s *WebSocketServer) Send(clientID string, msg WSMessage) error {
+func (s *WebSocketServer) SendText(clientID string, msg string) error {
 	s.mu.RLock()
 	conn, exists := s.connections[clientID]
 	s.mu.RUnlock()
@@ -81,7 +77,18 @@ func (s *WebSocketServer) Send(clientID string, msg WSMessage) error {
 	if !exists {
 		return fmt.Errorf("client %s not found", clientID)
 	}
-	return s.send(conn, msg)
+	return conn.WriteMessage(websocket.TextMessage, []byte(msg))
+}
+
+func (s *WebSocketServer) SendJSON(clientID string, msg any) error {
+	s.mu.RLock()
+	conn, exists := s.connections[clientID]
+	s.mu.RUnlock()
+
+	if !exists {
+		return fmt.Errorf("client %s not found", clientID)
+	}
+	return conn.WriteJSON(msg)
 }
 
 func (s *WebSocketServer) Broadcast(msg WSMessage) {
@@ -95,7 +102,7 @@ func (s *WebSocketServer) handleBroadcast() {
 		case broadcastMsg := <-s.broadcast:
 			s.mu.RLock()
 			for clientID, conn := range s.connections {
-				if err := s.send(conn, broadcastMsg.Message); err != nil {
+				if err := conn.WriteJSON(broadcastMsg.Message); err != nil {
 					// 移除失效连接
 					delete(s.connections, clientID)
 				}
