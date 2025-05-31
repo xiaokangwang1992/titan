@@ -308,16 +308,19 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 								Type:      WSMSG_TYPE_ERROR,
 								Timestamp: time.Now().Unix(),
 								ClientID:  clientID,
-								Data: &WSMessageData{
-									Code:    500,
-									Message: "internal server error",
-									Data:    err.Error(),
-								},
+								Data:      err,
 							})
 							continue
 						}
 						if resp != nil {
 							switch v := resp.(type) {
+							case WSMessage, *WSMessage:
+								msg := v.(WSMessage)
+								msg.ClientID = clientID
+								msg.Timestamp = time.Now().Unix()
+								if err := conn.WriteJSON(msg); err != nil {
+									s.log.Errorf("failed to send response to %s: %v", clientID, err)
+								}
 							case string, *string:
 								if err := conn.WriteMessage(websocket.TextMessage, []byte(v.(string))); err != nil {
 									s.log.Errorf("failed to send response to %s: %v", clientID, err)
@@ -331,6 +334,14 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 									s.log.Errorf("failed to send response to %s: %v", clientID, err)
 								}
 							}
+						} else {
+							s.log.Debugf("websocket handler response is nil: %s", clientID)
+							conn.WriteJSON(WSMessage{
+								Type:      WSMSG_TYPE_SUCCESS,
+								Timestamp: time.Now().Unix(),
+								ClientID:  clientID,
+								Data:      nil,
+							})
 						}
 					case websocket.PingMessage:
 						s.log.Debugf("websocket ping message received: %s", clientID)

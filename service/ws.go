@@ -26,19 +26,21 @@ type WSMSG_TYPE string
 const (
 	WSMSG_TYPE_WELCOME WSMSG_TYPE = "welcome"
 	WSMSG_TYPE_PING    WSMSG_TYPE = "ping"
+
+	WSMSG_TYPE_SUCCESS WSMSG_TYPE = "success"
 	WSMSG_TYPE_ERROR   WSMSG_TYPE = "error"
 )
 
-type WSMessageData struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Data    any    `json:"data"`
-}
+// type WSMessageData struct {
+// 	Code    int    `json:"code"`
+// 	Message string `json:"message"`
+// 	Data    any    `json:"data"`
+// }
 
 // // WebSocket 相关类型定义
 type WSMessage struct {
 	Type      WSMSG_TYPE     `json:"type"`
-	Data      *WSMessageData `json:"data,omitempty"`
+	Data      any            `json:"data,omitempty"`
 	Timestamp int64          `json:"timestamp"`
 	ClientID  string         `json:"client_id,omitempty"`
 	RequestID string         `json:"request_id,omitempty"`
