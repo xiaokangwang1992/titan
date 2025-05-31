@@ -10,9 +10,11 @@ package service
 
 import (
 	"context"
+	"crypto/md5"
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -50,6 +52,7 @@ type WebSocketServer struct {
 	connections map[string]*websocket.Conn
 	mu          sync.RWMutex
 	broadcast   chan WSBroadcastMessage
+	simpleCache *SimpleMessageCache
 }
 
 func NewWebSocketServer(ctx context.Context, addr, version string, log *logrus.Entry) *WebSocketServer {
@@ -122,4 +125,93 @@ func (s *WebSocketServer) GetClients() []string {
 		clients = append(clients, clientID)
 	}
 	return clients
+}
+
+// TODO: 消息预处理器
+func (s *WebSocketServer) preprocessMessage(msg *WSMessage, clientID string) (shouldProcess bool) {
+	// // 2. 过滤空消息
+	// if msg.Data == nil || msg.Data == "" {
+	// 	s.log.Debugf("empty message from %s, ignoring", clientID)
+	// 	return false
+	// }
+
+	// 3. 过滤重复消息（可选）
+	// if s.isDuplicateMessage(msg, clientID) {
+	// 	s.log.Debugf("duplicate message from %s, ignoring", clientID)
+	// 	return false
+	// }
+	return true
+}
+
+// 生成消息Hash
+func (s *WebSocketServer) generateMessageHash(msg *WSMessage, clientID string) string {
+	// 创建消息指纹：类型+数据+客户端ID
+	content := fmt.Sprintf("%s:%v:%s", msg.Type, msg.Data, clientID)
+
+	// 如果消息有RequestID，优先使用RequestID
+	if msg.RequestID != "" {
+		return fmt.Sprintf("req_%s_%s", clientID, msg.RequestID)
+	}
+
+	// 否则使用内容Hash
+	hash := md5.Sum([]byte(content))
+	return fmt.Sprintf("hash_%s_%x", clientID, hash)
+}
+
+func (s *WebSocketServer) isDuplicateMessage(msg *WSMessage, clientID string) bool {
+	if msg == nil {
+		return false
+	}
+
+	// 使用简化的缓存
+	cache := s.simpleCache // 需要在ApiServer中添加这个字段
+
+	msgHash := s.generateMessageHash(msg, clientID)
+
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+
+	now := time.Now().Unix()
+
+	// 定期清理过期消息（每分钟清理一次）
+	if now-cache.lastClean > 60 {
+		cache.cleanExpired(now)
+		cache.lastClean = now
+	}
+
+	// 检查是否重复
+	if lastSeen, exists := cache.messages[msgHash]; exists {
+		if now-lastSeen < int64(cache.ttl.Seconds()) {
+			return true // 重复消息
+		}
+	}
+
+	// 记录新消息
+	cache.messages[msgHash] = now
+	return false
+}
+
+// 简化的重复消息检测
+type SimpleMessageCache struct {
+	mu        sync.RWMutex
+	messages  map[string]int64 // hash -> timestamp
+	ttl       time.Duration
+	lastClean int64
+}
+
+func NewSimpleMessageCache(ttl time.Duration) *SimpleMessageCache {
+	return &SimpleMessageCache{
+		messages:  make(map[string]int64),
+		ttl:       ttl,
+		lastClean: time.Now().Unix(),
+	}
+}
+
+func (c *SimpleMessageCache) cleanExpired(now int64) {
+	ttlSeconds := int64(c.ttl.Seconds())
+	for hash, timestamp := range c.messages {
+		if now-timestamp > ttlSeconds {
+			delete(c.messages, hash)
+		}
+	}
 }
