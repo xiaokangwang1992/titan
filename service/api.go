@@ -286,7 +286,7 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 
 		// 获取处理器方法
 		handler := reflect.ValueOf(s.wsHandler).MethodByName(f).Interface()
-		if wsHandler, ok := handler.(func(*gin.Context, *websocket.Conn, *WSMessage)); ok {
+		if wsHandler, ok := handler.(func(*gin.Context, any) (any, error)); ok {
 			// 消息处理循环
 			for {
 				select {
@@ -294,8 +294,8 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 					s.log.Infof("websocket connection closed: %s", clientID)
 					return
 				default:
-					var msg WSMessage
-					if err := conn.ReadJSON(&msg); err != nil {
+					t, data, err := conn.ReadMessage()
+					if err != nil {
 						s.log.Errorf("websocket read message failed: %v", err)
 						if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure, websocket.CloseNoStatusReceived) {
 							s.log.Errorf("websocket read message failed: %v", err)
@@ -304,16 +304,45 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 					}
 
 					// 使用预处理器过滤消息
-					if !s.ws.preprocessMessage(&msg, clientID) {
+					if !s.ws.preprocessMessage(data, clientID) {
 						continue // 跳过不需要处理的消息
 					}
-
-					// 设置消息元数据
-					msg.ClientID = clientID
-					msg.Timestamp = time.Now().Unix()
-
-					// 调用处理器
-					wsHandler(c, conn, &msg)
+					// 根据消息类型处理
+					switch t {
+					case websocket.TextMessage, websocket.BinaryMessage:
+						// 调用处理器
+						resp, err := wsHandler(c, data)
+						if err != nil {
+							s.log.Errorf("websocket handler error: %v", err)
+							continue
+						}
+						if resp != nil {
+							switch v := resp.(type) {
+							case string, *string:
+								if err := conn.WriteMessage(websocket.TextMessage, []byte(v.(string))); err != nil {
+									s.log.Errorf("failed to send response to %s: %v", clientID, err)
+								}
+							case []byte, *[]byte:
+								if err := conn.WriteMessage(websocket.BinaryMessage, v.([]byte)); err != nil {
+									s.log.Errorf("failed to send response to %s: %v", clientID, err)
+								}
+							default:
+								if err := conn.WriteJSON(resp); err != nil {
+									s.log.Errorf("failed to send response to %s: %v", clientID, err)
+								}
+							}
+						}
+					case websocket.PingMessage:
+						s.log.Debugf("websocket ping message received: %s", clientID)
+						err := conn.WriteControl(websocket.PongMessage, []byte("pong"), time.Now().Add(time.Second))
+						if err != nil {
+							s.log.Errorf("failed to send pong to %s: %v", clientID, err)
+						}
+					case websocket.PongMessage:
+						s.log.Debugf("websocket pong message received: %s", clientID)
+					default:
+						s.log.Debugf("unsupported message type %d from %s", t, clientID)
+					}
 				}
 			}
 		} else {

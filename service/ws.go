@@ -28,7 +28,7 @@ const (
 	WSMSG_TYPE_PING    WSMSG_TYPE = "ping"
 )
 
-// WebSocket 相关类型定义
+// // WebSocket 相关类型定义
 type WSMessage struct {
 	Type      WSMSG_TYPE     `json:"type"`
 	Data      any            `json:"data"`
@@ -43,7 +43,7 @@ type WSBroadcastMessage struct {
 	Group   string
 }
 
-type WSHandler func(*gin.Context, *websocket.Conn, *WSMessage)
+type WSHandler func(*gin.Context, any) (any, error)
 
 type WebSocketServer struct {
 	ctx         context.Context
@@ -94,7 +94,7 @@ func (s *WebSocketServer) SendJSON(clientID string, msg any) error {
 	return conn.WriteJSON(msg)
 }
 
-func (s *WebSocketServer) Broadcast(msg WSMessage) {
+func (s *WebSocketServer) Broadcast(msg any) {
 	s.broadcast <- WSBroadcastMessage{Message: msg}
 }
 
@@ -128,7 +128,7 @@ func (s *WebSocketServer) GetClients() []string {
 }
 
 // TODO: 消息预处理器
-func (s *WebSocketServer) preprocessMessage(msg *WSMessage, clientID string) (shouldProcess bool) {
+func (s *WebSocketServer) preprocessMessage(msg any, clientID string) (shouldProcess bool) {
 	// // 2. 过滤空消息
 	// if msg.Data == nil || msg.Data == "" {
 	// 	s.log.Debugf("empty message from %s, ignoring", clientID)
@@ -144,21 +144,22 @@ func (s *WebSocketServer) preprocessMessage(msg *WSMessage, clientID string) (sh
 }
 
 // 生成消息Hash
-func (s *WebSocketServer) generateMessageHash(msg *WSMessage, clientID string) string {
-	// 创建消息指纹：类型+数据+客户端ID
-	content := fmt.Sprintf("%s:%v:%s", msg.Type, msg.Data, clientID)
-
-	// 如果消息有RequestID，优先使用RequestID
-	if msg.RequestID != "" {
-		return fmt.Sprintf("req_%s_%s", clientID, msg.RequestID)
+func (s *WebSocketServer) generateMessageHash(msg any, clientID string) string {
+	switch msg.(type) {
+	case WSMessage:
+		msg := msg.(WSMessage)
+		content := fmt.Sprintf("%s:%v:%s", msg.Type, msg.Data, clientID)
+		hash := md5.Sum([]byte(content))
+		return fmt.Sprintf("hash_%s_%x", clientID, hash)
+	case string:
+		content := fmt.Sprintf("%s:%s", msg, clientID)
+		hash := md5.Sum([]byte(content))
+		return fmt.Sprintf("hash_%s_%x", clientID, hash)
 	}
-
-	// 否则使用内容Hash
-	hash := md5.Sum([]byte(content))
-	return fmt.Sprintf("hash_%s_%x", clientID, hash)
+	return ""
 }
 
-func (s *WebSocketServer) isDuplicateMessage(msg *WSMessage, clientID string) bool {
+func (s *WebSocketServer) isDuplicateMessage(msg any, clientID string) bool {
 	if msg == nil {
 		return false
 	}
