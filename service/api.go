@@ -257,16 +257,6 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 		}
 		defer conn.Close()
 
-		// 设置 ping 处理器
-		conn.SetPingHandler(func(appData string) error {
-			s.log.Debugf("websocket ping message received: %s", clientID)
-			err := conn.WriteControl(websocket.PongMessage, []byte("pong"), time.Now().Add(time.Second))
-			if err != nil {
-				s.log.Errorf("failed to send pong to %s: %v", clientID, err)
-			}
-			return err
-		})
-
 		// 注册连接
 		s.ws.mu.Lock()
 		s.ws.connections[clientID] = conn
@@ -314,6 +304,16 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 						resp, err := wsHandler(c, data)
 						if err != nil {
 							s.log.Errorf("websocket handler error: %v", err)
+							conn.WriteJSON(WSMessage{
+								Type:      WSMSG_TYPE_ERROR,
+								Timestamp: time.Now().Unix(),
+								ClientID:  clientID,
+								Data: &WSMessageData{
+									Code:    500,
+									Message: "internal server error",
+									Data:    err.Error(),
+								},
+							})
 							continue
 						}
 						if resp != nil {
