@@ -302,9 +302,10 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 						}
 						return
 					}
-					if msg.Type == WSMSG_TYPE_PING {
-						s.log.Debugf("websocket ping message received: %s", clientID)
-						continue
+
+					// 使用预处理器过滤消息
+					if !s.ws.preprocessMessage(&msg, clientID) {
+						continue // 跳过不需要处理的消息
 					}
 
 					// 设置消息元数据
