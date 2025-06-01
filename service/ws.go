@@ -43,7 +43,6 @@ type WSMessage struct {
 	Data      any            `json:"data,omitempty"`
 	Timestamp int64          `json:"timestamp"`
 	ClientID  string         `json:"client_id,omitempty"`
-	RequestID string         `json:"request_id,omitempty"`
 	Metadata  map[string]any `json:"metadata,omitempty"`
 }
 
