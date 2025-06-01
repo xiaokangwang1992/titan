@@ -94,6 +94,7 @@ type EventHandler func(event Event)
 
 // 高性能websocket客户端
 type WSClient struct {
+	id     string
 	config *Config
 	// logger *logrus.Entry
 
@@ -158,7 +159,7 @@ func (c *WSClient) getLastError() error {
 }
 
 // 创建新的websocket客户端
-func NewClient(ctx context.Context, config *Config) *WSClient {
+func NewClient(ctx context.Context, id string, config *Config) *WSClient {
 	if config == nil {
 		config = DefaultConfig("")
 	}
@@ -170,6 +171,7 @@ func NewClient(ctx context.Context, config *Config) *WSClient {
 	// })
 
 	client := &WSClient{
+		id:     id,
 		config: config,
 		// logger:         logger,
 		ctx:            subCtx,
@@ -283,6 +285,7 @@ func (c *WSClient) SendMessage(msg any) error {
 	switch msg.(type) {
 	case service.WSMessage, *service.WSMessage:
 		msg := msg.(service.WSMessage)
+		msg.ClientID = c.id
 		c.sendChan <- msg
 	case string, *string:
 		c.sendChan <- msg
