@@ -10,7 +10,6 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -281,28 +280,18 @@ func (c *WSClient) SendMessage(msg any) error {
 		return fmt.Errorf("client is not connected")
 	}
 
-	select {
-	case c.sendChan <- msg:
-		return nil
-	case <-c.ctx.Done():
-		return fmt.Errorf("client is closed")
+	switch msg.(type) {
+	case service.WSMessage, *service.WSMessage:
+		msg := msg.(service.WSMessage)
+		c.sendChan <- msg
+	case string, *string:
+		c.sendChan <- msg
+	case []byte, *[]byte:
+		c.sendChan <- msg
 	default:
-		return fmt.Errorf("send buffer is full")
+		return fmt.Errorf("only support service.WSMessage, string, []byte, unsupported message type: %T, %v", msg, msg)
 	}
-}
-
-// 发送JSON消息
-func (c *WSClient) SendJSON(v any) error {
-	data, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	return c.SendMessage(service.WSMessage{Type: service.WSMSG_TYPE_SUCCESS, Data: data})
-}
-
-// 发送文本消息
-func (c *WSClient) SendText(text string) error {
-	return c.SendMessage(service.WSMessage{Type: service.WSMSG_TYPE_SUCCESS, Data: text})
+	return nil
 }
 
 // 注册事件处理器
@@ -469,7 +458,12 @@ func (c *WSClient) writeLoop() {
 					})
 				}
 			default:
-				logrus.Warnf("unsupported message type: %T", v)
+				c.storeError(fmt.Errorf("only support service.WSMessage, string, []byte, unsupported message type: %T, %v", v, v))
+				c.emitEvent(Event{
+					Type:      EventError,
+					Error:     fmt.Errorf("only support service.WSMessage, string, []byte, unsupported message type: %T, %v", v, v),
+					Timestamp: time.Now(),
+				})
 			}
 
 			atomic.AddInt64(&c.stats.sentMessages, 1)
