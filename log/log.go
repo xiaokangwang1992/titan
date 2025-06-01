@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/piaobeizu/titan/cache"
+	"github.com/piaobeizu/titan/utils"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
@@ -177,10 +178,20 @@ func getCaller(skip int) (string, int) {
 func InitLog(app, logMode string) {
 	level := log.InfoLevel
 	if logMode == "" {
-		logMode = os.Getenv("D2_DEBUG_MODE")
+		logMode = utils.GetEnv("TITAN_DEBUG_MODE", "debug")
 	}
-	if logMode == "" {
+	switch strings.ToLower(logMode) {
+	case "debug":
 		level = log.DebugLevel
+	case "info":
+		level = log.InfoLevel
+	case "warn":
+		level = log.WarnLevel
+	case "error":
+		level = log.ErrorLevel
+	case "fatal":
+		level = log.FatalLevel
+	case "panic":
 	}
 	log.SetOutput(io.Discard)
 	log.AddHook(loggerHook(level))

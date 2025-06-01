@@ -257,6 +257,14 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 		}
 		defer conn.Close()
 
+		conn.SetPingHandler(func(message string) error {
+			return conn.WriteMessage(websocket.PongMessage, []byte("pong"))
+		})
+
+		conn.SetPongHandler(func(message string) error {
+			return nil
+		})
+
 		// 注册连接
 		s.ws.mu.Lock()
 		s.ws.connections[clientID] = conn
@@ -343,14 +351,6 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 								Data:      nil,
 							})
 						}
-					case websocket.PingMessage:
-						s.log.Debugf("websocket ping message received: %s", clientID)
-						err := conn.WriteControl(websocket.PongMessage, []byte("pong"), time.Now().Add(time.Second))
-						if err != nil {
-							s.log.Errorf("failed to send pong to %s: %v", clientID, err)
-						}
-					case websocket.PongMessage:
-						s.log.Debugf("websocket pong message received: %s", clientID)
 					default:
 						s.log.Debugf("unsupported message type %d from %s", t, clientID)
 					}
