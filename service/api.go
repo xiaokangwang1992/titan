@@ -344,12 +344,6 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 							}
 						} else {
 							s.log.Debugf("websocket handler response is nil: %s", clientID)
-							conn.WriteJSON(WSMessage[any]{
-								Type:      WSMSG_TYPE_SUCCESS,
-								Timestamp: time.Now().Unix(),
-								ClientID:  clientID,
-								Data:      nil,
-							})
 						}
 					default:
 						s.log.Debugf("unsupported message type %d from %s", t, clientID)
