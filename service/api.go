@@ -312,7 +312,7 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 						resp, err := wsHandler(c, data)
 						if err != nil {
 							s.log.Errorf("websocket handler error: %v", err)
-							conn.WriteJSON(WSMessage{
+							conn.WriteJSON(WSMessage[any]{
 								Type:      WSMSG_TYPE_ERROR,
 								Timestamp: time.Now().Unix(),
 								ClientID:  clientID,
@@ -322,8 +322,8 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 						}
 						if resp != nil {
 							switch v := resp.(type) {
-							case WSMessage, *WSMessage:
-								msg := v.(WSMessage)
+							case WSMessage[any], *WSMessage[any]:
+								msg := v.(WSMessage[any])
 								msg.ClientID = clientID
 								msg.Timestamp = time.Now().Unix()
 								if err := conn.WriteJSON(msg); err != nil {
@@ -344,7 +344,7 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 							}
 						} else {
 							s.log.Debugf("websocket handler response is nil: %s", clientID)
-							conn.WriteJSON(WSMessage{
+							conn.WriteJSON(WSMessage[any]{
 								Type:      WSMSG_TYPE_SUCCESS,
 								Timestamp: time.Now().Unix(),
 								ClientID:  clientID,
