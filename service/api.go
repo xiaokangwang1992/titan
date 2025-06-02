@@ -284,7 +284,7 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 
 		// 获取处理器方法
 		handler := reflect.ValueOf(s.wsHandler).MethodByName(f).Interface()
-		if wsHandler, ok := handler.(func(*gin.Context, any) (any, error)); ok {
+		if wsHandler, ok := handler.(func(*gin.Context, []byte) (any, error)); ok {
 			// 消息处理循环
 			for {
 				select {
