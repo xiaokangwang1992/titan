@@ -38,16 +38,16 @@ const (
 // }
 
 // // WebSocket 相关类型定义
-type WSMessage struct {
+type WSMessage[T any] struct {
 	Type      WSMSG_TYPE     `json:"type"`
-	Data      any            `json:"data,omitempty"`
+	Data      T              `json:"data,omitempty"`
 	Timestamp int64          `json:"timestamp"`
 	ClientID  string         `json:"client_id,omitempty"`
 	Metadata  map[string]any `json:"metadata,omitempty"`
 }
 
-type WSBroadcastMessage struct {
-	Message any
+type WSBroadcastMessage[T any] struct {
+	Message T
 	Group   string
 }
 
@@ -59,7 +59,7 @@ type WebSocketServer struct {
 	upgrader    websocket.Upgrader
 	connections map[string]*websocket.Conn
 	mu          sync.RWMutex
-	broadcast   chan WSBroadcastMessage
+	broadcast   chan WSBroadcastMessage[any]
 	simpleCache *SimpleMessageCache
 }
 
@@ -76,7 +76,7 @@ func NewWebSocketServer(ctx context.Context, addr, version string, log *logrus.E
 		},
 		connections: make(map[string]*websocket.Conn),
 		mu:          sync.RWMutex{},
-		broadcast:   make(chan WSBroadcastMessage, 100),
+		broadcast:   make(chan WSBroadcastMessage[any], 100),
 	}
 }
 
@@ -103,7 +103,7 @@ func (s *WebSocketServer) SendJSON(clientID string, msg any) error {
 }
 
 func (s *WebSocketServer) Broadcast(msg any) {
-	s.broadcast <- WSBroadcastMessage{Message: msg}
+	s.broadcast <- WSBroadcastMessage[any]{Message: msg}
 }
 
 // handleWSBroadcast 处理 WebSocket 广播消息
@@ -154,8 +154,8 @@ func (s *WebSocketServer) preprocessMessage(msg any, clientID string) (shouldPro
 // 生成消息Hash
 func (s *WebSocketServer) generateMessageHash(msg any, clientID string) string {
 	switch msg.(type) {
-	case WSMessage:
-		msg := msg.(WSMessage)
+	case WSMessage[any]:
+		msg := msg.(WSMessage[any])
 		content := fmt.Sprintf("%s:%v:%s", msg.Type, msg.Data, clientID)
 		hash := md5.Sum([]byte(content))
 		return fmt.Sprintf("hash_%s_%x", clientID, hash)
