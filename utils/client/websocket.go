@@ -23,16 +23,20 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type WSMSG_TYPE int
+
+const (
+	WSMSG_TYPE_TEXT   WSMSG_TYPE = 1
+	WSMSG_TYPE_BINARY WSMSG_TYPE = 2
+	WSMSG_TYPE_JSON   WSMSG_TYPE = 3
+)
+
 // 连接状态常量
 const (
 	StateDisconnected int32 = 0
 	StateConnecting   int32 = 1
 	StateConnected    int32 = 2
 	StateClosed       int32 = 3
-
-	WSMSG_TYPE_TEXT   int = 1
-	WSMSG_TYPE_BINARY int = 2
-	WSMSG_TYPE_JSON   int = 3
 )
 
 // 配置选项
@@ -93,7 +97,7 @@ type Event struct {
 }
 
 type SendChan struct {
-	Type    int
+	Type    WSMSG_TYPE
 	Message any
 }
 
@@ -285,7 +289,7 @@ func (c *WSClient) Close() error {
 }
 
 // 发送消息
-func (c *WSClient) SendMessage(t int, msg any) error {
+func (c *WSClient) SendMessage(t WSMSG_TYPE, msg any) error {
 	if atomic.LoadInt32(&c.state) != StateConnected {
 		return fmt.Errorf("client is not connected")
 	}
