@@ -51,7 +51,7 @@ type WSBroadcastMessage struct {
 	Group   string
 }
 
-type WSHandler func(*gin.Context, []byte) (any, error)
+type WSHandler[T any] func(*gin.Context, T) (any, error)
 
 type WebSocketServer struct {
 	ctx         context.Context
