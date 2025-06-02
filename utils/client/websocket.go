@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/piaobeizu/titan/service"
 	"github.com/sirupsen/logrus"
 )
 
@@ -30,6 +29,10 @@ const (
 	StateConnecting   int32 = 1
 	StateConnected    int32 = 2
 	StateClosed       int32 = 3
+
+	WSMSG_TYPE_TEXT   int = 1
+	WSMSG_TYPE_BINARY int = 2
+	WSMSG_TYPE_JSON   int = 3
 )
 
 // 配置选项
@@ -84,9 +87,14 @@ const (
 // 事件
 type Event struct {
 	Type      EventType
-	Data      interface{}
+	Data      any
 	Error     error
 	Timestamp time.Time
+}
+
+type SendChan struct {
+	Type    int
+	Message any
 }
 
 // 事件处理器
@@ -108,7 +116,7 @@ type WSClient struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
 	done      chan struct{}
-	sendChan  chan any
+	sendChan  chan SendChan
 	eventChan chan Event
 
 	// 事件处理
@@ -177,7 +185,7 @@ func NewClient(ctx context.Context, id string, config *Config) *WSClient {
 		ctx:            subCtx,
 		cancel:         cancel,
 		done:           make(chan struct{}),
-		sendChan:       make(chan any, config.BufferSize),
+		sendChan:       make(chan SendChan, config.BufferSize),
 		eventChan:      make(chan Event, 100),
 		handlers:       make(map[EventType][]EventHandler),
 		reconnectDelay: int64(config.ReconnectInterval),
@@ -277,23 +285,11 @@ func (c *WSClient) Close() error {
 }
 
 // 发送消息
-func (c *WSClient) SendMessage(msg any) error {
+func (c *WSClient) SendMessage(t int, msg any) error {
 	if atomic.LoadInt32(&c.state) != StateConnected {
 		return fmt.Errorf("client is not connected")
 	}
-
-	switch msg.(type) {
-	case service.WSMessage, *service.WSMessage:
-		msg := msg.(service.WSMessage)
-		msg.ClientID = c.id
-		c.sendChan <- msg
-	case string, *string:
-		c.sendChan <- msg
-	case []byte, *[]byte:
-		c.sendChan <- msg
-	default:
-		return fmt.Errorf("only support service.WSMessage, string, []byte, unsupported message type: %T, %v", msg, msg)
-	}
+	c.sendChan <- SendChan{Type: t, Message: msg}
 	return nil
 }
 
@@ -309,8 +305,8 @@ func (c *WSClient) State() int32 {
 	return atomic.LoadInt32(&c.state)
 }
 
-func (c *WSClient) Stats() map[string]interface{} {
-	stats := map[string]interface{}{
+func (c *WSClient) Stats() map[string]any {
+	stats := map[string]any{
 		"sent_messages":       atomic.LoadInt64(&c.stats.sentMessages),
 		"received_messages":   atomic.LoadInt64(&c.stats.receivedMessages),
 		"connect_attempts":    atomic.LoadInt64(&c.stats.connectAttempts),
@@ -429,10 +425,9 @@ func (c *WSClient) writeLoop() {
 			if c.config.WriteTimeout > 0 {
 				_ = conn.SetWriteDeadline(time.Now().Add(c.config.WriteTimeout))
 			}
-			switch v := msg.(type) {
-			case service.WSMessage, *service.WSMessage:
-				msg := v.(service.WSMessage)
-				if err := conn.WriteJSON(msg); err != nil {
+			if msg.Type == WSMSG_TYPE_TEXT {
+				if err := conn.WriteMessage(websocket.TextMessage, []byte(msg.Message.(string))); err != nil {
+					logrus.Errorf("write message error: %v", err)
 					c.storeError(err)
 					c.emitEvent(Event{
 						Type:      EventError,
@@ -440,9 +435,9 @@ func (c *WSClient) writeLoop() {
 						Timestamp: time.Now(),
 					})
 				}
-			case string, *string:
-				msg := v.(string)
-				if err := conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
+			} else if msg.Type == WSMSG_TYPE_BINARY {
+				if err := conn.WriteMessage(websocket.BinaryMessage, msg.Message.([]byte)); err != nil {
+					logrus.Errorf("write message error: %v", err)
 					c.storeError(err)
 					c.emitEvent(Event{
 						Type:      EventError,
@@ -450,9 +445,9 @@ func (c *WSClient) writeLoop() {
 						Timestamp: time.Now(),
 					})
 				}
-			case []byte, *[]byte:
-				msg := v.([]byte)
-				if err := conn.WriteMessage(websocket.BinaryMessage, msg); err != nil {
+			} else if msg.Type == WSMSG_TYPE_JSON {
+				if err := conn.WriteJSON(msg.Message); err != nil {
+					logrus.Errorf("write message error: %v", err)
 					c.storeError(err)
 					c.emitEvent(Event{
 						Type:      EventError,
@@ -460,13 +455,6 @@ func (c *WSClient) writeLoop() {
 						Timestamp: time.Now(),
 					})
 				}
-			default:
-				c.storeError(fmt.Errorf("only support service.WSMessage, string, []byte, unsupported message type: %T, %v", v, v))
-				c.emitEvent(Event{
-					Type:      EventError,
-					Error:     fmt.Errorf("only support service.WSMessage, string, []byte, unsupported message type: %T, %v", v, v),
-					Timestamp: time.Now(),
-				})
 			}
 
 			atomic.AddInt64(&c.stats.sentMessages, 1)
