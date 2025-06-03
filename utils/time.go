@@ -25,13 +25,12 @@ import (
 
 // TimeResponse 服务器时间响应
 type TimeResponse struct {
-	ServerUTC     string `json:"server_utc"`
-	ServerLocal   string `json:"server_local"`
-	Timestamp     int64  `json:"timestamp"`
-	Timezone      string `json:"timezone"`
-	RequestID     string `json:"request_id"`
-	ServerVersion string `json:"server_version"`
-	ProcessTime   string `json:"process_time"`
+	UTC         string `json:"utc"`
+	Local       string `json:"local"`
+	Timestamp   int64  `json:"timestamp"`
+	Timezone    string `json:"timezone"`
+	Version     string `json:"version"`
+	ProcessTime string `json:"process_time"`
 }
 
 // ClientConfig 客户端配置
@@ -119,7 +118,7 @@ func (tc *TimeClient) SyncTime() (*TimeSyncResult, error) {
 	}
 
 	// 解析服务器UTC时间
-	serverTime, err := time.Parse("2006-01-02T15:04:05.000Z", timeResp.ServerUTC)
+	serverTime, err := time.Parse("2006-01-02T15:04:05.000Z", timeResp.UTC)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse server time: %v", err)
 	}
@@ -135,14 +134,13 @@ func (tc *TimeClient) SyncTime() (*TimeSyncResult, error) {
 
 	result := &TimeSyncResult{
 		Success:         true,
-		ServerTimeUTC:   serverTime,
-		ServerTimeLocal: localServerTime,
+		TimeUTC:         serverTime,
+		TimeLocal:       localServerTime,
 		ClientTimeLocal: localCurrentTime,
 		NetworkDelay:    networkDelay,
 		TimeOffset:      offset,
-		RequestID:       timeResp.RequestID,
 		SyncTimestamp:   time.Now(),
-		ServerVersion:   timeResp.ServerVersion,
+		ServerVersion:   timeResp.Version,
 	}
 
 	// 记录同步结果
@@ -154,12 +152,11 @@ func (tc *TimeClient) SyncTime() (*TimeSyncResult, error) {
 // TimeSyncResult 时间同步结果
 type TimeSyncResult struct {
 	Success         bool          `json:"success"`
-	ServerTimeUTC   time.Time     `json:"server_time_utc"`
-	ServerTimeLocal time.Time     `json:"server_time_local"`
+	TimeUTC         time.Time     `json:"time_utc"`
+	TimeLocal       time.Time     `json:"time_local"`
 	ClientTimeLocal time.Time     `json:"client_time_local"`
 	NetworkDelay    time.Duration `json:"network_delay"`
 	TimeOffset      time.Duration `json:"time_offset"`
-	RequestID       string        `json:"request_id"`
 	SyncTimestamp   time.Time     `json:"sync_timestamp"`
 	ServerVersion   string        `json:"server_version"`
 	Error           string        `json:"error,omitempty"`
@@ -180,12 +177,11 @@ func (tc *TimeClient) logSyncResult(result *TimeSyncResult) {
 	}
 
 	logrus.Printf("[%s] 时间同步完成", status)
-	logrus.Printf("   服务器UTC: %s", result.ServerTimeUTC.Format("2006-01-02 15:04:05.000"))
-	logrus.Printf("   服务器本地: %s", result.ServerTimeLocal.Format("2006-01-02 15:04:05.000 MST"))
+	logrus.Printf("   服务器UTC: %s", result.TimeUTC.Format("2006-01-02 15:04:05.000"))
+	logrus.Printf("   服务器本地: %s", result.TimeLocal.Format("2006-01-02 15:04:05.000 MST"))
 	logrus.Printf("   客户端本地: %s", result.ClientTimeLocal.Format("2006-01-02 15:04:05.000 MST"))
 	logrus.Printf("   网络延迟: %v", result.NetworkDelay)
 	logrus.Printf("   时间偏移: %v", result.TimeOffset)
-	logrus.Printf("   请求ID: %s", result.RequestID)
 }
 
 // StartDaemon 启动守护进程模式
@@ -263,7 +259,7 @@ func (tc *TimeClient) adjustSystemTime(result *TimeSyncResult) {
 	logrus.Printf("检测到时间偏移 %v，尝试调整系统时间...", result.TimeOffset)
 
 	// 计算目标时间（服务器时间加上网络延迟补偿）
-	targetTime := result.ServerTimeUTC.Add(result.NetworkDelay / 2)
+	targetTime := result.TimeUTC.Add(result.NetworkDelay / 2)
 
 	// 检查权限
 	if !tc.hasAdminPermission() {
@@ -487,11 +483,11 @@ func (tc *TimeClient) verifyTimeAdjustment(targetTime time.Time) {
 // defaultConfig 默认配置
 func DefaultConfig() *ClientConfig {
 	return &ClientConfig{
-		ServerURL:    "http://time-server:8080",
+		ServerURL:    GetEnv("TIME_SERVER_URL", "http://time-server:8080"),
 		ClientID:     "client-001",
 		Region:       "asia-east1",
 		Timezone:     "Asia/Shanghai",
-		SyncInterval: 1 * time.Hour,
+		SyncInterval: 24 * time.Hour,
 		Timeout:      10 * time.Second,
 		MaxRetries:   3,
 		EnableTLS:    false,
