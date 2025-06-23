@@ -35,6 +35,7 @@ type TimeResponse struct {
 
 // ClientConfig 客户端配置
 type ClientConfig struct {
+	Enable       string        `json:"enable"`
 	ServerURL    string        `json:"server_url"`
 	ClientID     string        `json:"client_id"`
 	Region       string        `json:"region"`
@@ -56,6 +57,10 @@ type TimeClient struct {
 
 // NewTimeClient 创建时间客户端
 func NewTimeClient(config *ClientConfig) (*TimeClient, error) {
+	if config.Enable != "true" {
+		return nil, nil
+	}
+
 	// 加载本地时区
 	localTZ, err := time.LoadLocation(config.Timezone)
 	if err != nil {
@@ -483,6 +488,7 @@ func (tc *TimeClient) verifyTimeAdjustment(targetTime time.Time) {
 // defaultConfig 默认配置
 func DefaultConfig() *ClientConfig {
 	return &ClientConfig{
+		Enable:       GetEnv("TIME_ENABLE", "true"),
 		ServerURL:    GetEnv("TIME_SERVER_URL", "http://time-server:8080"),
 		ClientID:     "client-001",
 		Region:       "asia-east1",
