@@ -429,7 +429,8 @@ func (c *WSClient) writeLoop() {
 			if c.config.WriteTimeout > 0 {
 				_ = conn.SetWriteDeadline(time.Now().Add(c.config.WriteTimeout))
 			}
-			if msg.Type == WSMSG_TYPE_TEXT {
+			switch msg.Type {
+			case WSMSG_TYPE_TEXT:
 				if err := conn.WriteMessage(websocket.TextMessage, []byte(msg.Message.(string))); err != nil {
 					logrus.Errorf("write message error: %v", err)
 					c.storeError(err)
@@ -439,7 +440,7 @@ func (c *WSClient) writeLoop() {
 						Timestamp: time.Now(),
 					})
 				}
-			} else if msg.Type == WSMSG_TYPE_BINARY {
+			case WSMSG_TYPE_BINARY:
 				if err := conn.WriteMessage(websocket.BinaryMessage, msg.Message.([]byte)); err != nil {
 					logrus.Errorf("write message error: %v", err)
 					c.storeError(err)
@@ -449,7 +450,7 @@ func (c *WSClient) writeLoop() {
 						Timestamp: time.Now(),
 					})
 				}
-			} else if msg.Type == WSMSG_TYPE_JSON {
+			case WSMSG_TYPE_JSON:
 				if err := conn.WriteJSON(msg.Message); err != nil {
 					logrus.Errorf("write message error: %v", err)
 					c.storeError(err)

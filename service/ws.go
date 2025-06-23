@@ -31,6 +31,31 @@ const (
 	WSMSG_TYPE_ERROR   WSMSG_TYPE = "error"
 )
 
+// 服务端事件类型
+type ServerEventType int
+
+const (
+	ServerEventClientConnected    ServerEventType = iota // 客户端连接
+	ServerEventClientDisconnected                        // 客户端断开
+	ServerEventMessageReceived                           // 收到消息
+	ServerEventMessageSent                               // 发送消息
+	ServerEventBroadcastSent                             // 广播消息
+	ServerEventError                                     // 发生错误
+)
+
+// 服务端事件
+type ServerEvent struct {
+	Type      ServerEventType
+	ClientID  string
+	Data      any
+	Error     error
+	Timestamp time.Time
+	Metadata  map[string]any
+}
+
+// 事件处理器
+type ServerEventHandler func(event ServerEvent)
+
 // type WSMessageData struct {
 // 	Code    int    `json:"code"`
 // 	Message string `json:"message"`
@@ -61,10 +86,16 @@ type WebSocketServer struct {
 	mu          sync.RWMutex
 	broadcast   chan WSBroadcastMessage[any]
 	simpleCache *SimpleMessageCache
+
+	// 事件处理相关
+	eventChan    chan ServerEvent
+	handlers     map[ServerEventType][]ServerEventHandler
+	handlersMu   sync.RWMutex
+	ignoreEvents map[ServerEventType]bool
 }
 
 func NewWebSocketServer(ctx context.Context, addr, version string, log *logrus.Entry) *WebSocketServer {
-	return &WebSocketServer{
+	server := &WebSocketServer{
 		ctx: ctx,
 		log: log,
 		upgrader: websocket.Upgrader{
@@ -77,7 +108,91 @@ func NewWebSocketServer(ctx context.Context, addr, version string, log *logrus.E
 		connections: make(map[string]*websocket.Conn),
 		mu:          sync.RWMutex{},
 		broadcast:   make(chan WSBroadcastMessage[any], 100),
+		simpleCache: NewSimpleMessageCache(5 * time.Minute),
+		eventChan:   make(chan ServerEvent, 100),
+		handlers:    make(map[ServerEventType][]ServerEventHandler),
+		handlersMu:  sync.RWMutex{},
+		ignoreEvents: map[ServerEventType]bool{
+			ServerEventMessageReceived:    true,
+			ServerEventMessageSent:        true,
+			ServerEventBroadcastSent:      true,
+			ServerEventError:              true,
+			ServerEventClientConnected:    true,
+			ServerEventClientDisconnected: true,
+		},
 	}
+	return server
+}
+
+// 注册事件处理器
+func (s *WebSocketServer) OnEvent(eventType ServerEventType, handler ServerEventHandler) {
+	s.handlersMu.Lock()
+	defer s.handlersMu.Unlock()
+	s.ignoreEvents[eventType] = false
+	s.handlers[eventType] = append(s.handlers[eventType], handler)
+}
+
+// 发送事件
+func (s *WebSocketServer) emitEvent(event ServerEvent) {
+	if s.ignoreEvents[event.Type] {
+		return
+	}
+	select {
+	case s.eventChan <- event:
+	default:
+		s.log.Warn("event queue is full, dropping event")
+	}
+}
+
+// 事件处理循环
+func (s *WebSocketServer) eventLoop() {
+	for {
+		select {
+		case <-s.ctx.Done():
+			return
+		case event := <-s.eventChan:
+			s.handlersMu.RLock()
+			handlers := s.handlers[event.Type]
+			s.handlersMu.RUnlock()
+
+			for _, handler := range handlers {
+				go handler(event) // 异步处理避免阻塞
+			}
+		}
+	}
+}
+
+// 添加连接时触发事件
+func (s *WebSocketServer) addConnection(clientID string, conn *websocket.Conn) {
+	s.mu.Lock()
+	s.connections[clientID] = conn
+	s.mu.Unlock()
+
+	s.emitEvent(ServerEvent{
+		Type:      ServerEventClientConnected,
+		ClientID:  clientID,
+		Timestamp: time.Now(),
+		Metadata: map[string]any{
+			"total_connections": len(s.connections),
+		},
+	})
+}
+
+// 移除连接时触发事件
+func (s *WebSocketServer) removeConnection(clientID string) {
+	s.mu.Lock()
+	delete(s.connections, clientID)
+	totalConnections := len(s.connections)
+	s.mu.Unlock()
+
+	s.emitEvent(ServerEvent{
+		Type:      ServerEventClientDisconnected,
+		ClientID:  clientID,
+		Timestamp: time.Now(),
+		Metadata: map[string]any{
+			"total_connections": totalConnections,
+		},
+	})
 }
 
 func (s *WebSocketServer) SendText(clientID string, msg string) error {
@@ -86,9 +201,34 @@ func (s *WebSocketServer) SendText(clientID string, msg string) error {
 	s.mu.RUnlock()
 
 	if !exists {
-		return fmt.Errorf("client %s not found", clientID)
+		err := fmt.Errorf("client %s not found", clientID)
+		s.emitEvent(ServerEvent{
+			Type:      ServerEventError,
+			ClientID:  clientID,
+			Error:     err,
+			Timestamp: time.Now(),
+		})
+		return err
 	}
-	return conn.WriteMessage(websocket.TextMessage, []byte(msg))
+
+	err := conn.WriteMessage(websocket.TextMessage, []byte(msg))
+	if err != nil {
+		s.emitEvent(ServerEvent{
+			Type:      ServerEventError,
+			ClientID:  clientID,
+			Error:     err,
+			Timestamp: time.Now(),
+		})
+	} else {
+		s.emitEvent(ServerEvent{
+			Type:      ServerEventMessageSent,
+			ClientID:  clientID,
+			Data:      msg,
+			Timestamp: time.Now(),
+		})
+	}
+
+	return err
 }
 
 func (s *WebSocketServer) SendJSON(clientID string, msg any) error {
@@ -97,9 +237,34 @@ func (s *WebSocketServer) SendJSON(clientID string, msg any) error {
 	s.mu.RUnlock()
 
 	if !exists {
-		return fmt.Errorf("client %s not found", clientID)
+		err := fmt.Errorf("client %s not found", clientID)
+		s.emitEvent(ServerEvent{
+			Type:      ServerEventError,
+			ClientID:  clientID,
+			Error:     err,
+			Timestamp: time.Now(),
+		})
+		return err
 	}
-	return conn.WriteJSON(msg)
+
+	err := conn.WriteJSON(msg)
+	if err != nil {
+		s.emitEvent(ServerEvent{
+			Type:      ServerEventError,
+			ClientID:  clientID,
+			Error:     err,
+			Timestamp: time.Now(),
+		})
+	} else {
+		s.emitEvent(ServerEvent{
+			Type:      ServerEventMessageSent,
+			ClientID:  clientID,
+			Data:      msg,
+			Timestamp: time.Now(),
+		})
+	}
+
+	return err
 }
 
 func (s *WebSocketServer) Broadcast(msg any) {
@@ -112,13 +277,38 @@ func (s *WebSocketServer) handleBroadcast() {
 		select {
 		case broadcastMsg := <-s.broadcast:
 			s.mu.RLock()
+			successCount := 0
+			failCount := 0
+
 			for clientID, conn := range s.connections {
 				if err := conn.WriteJSON(broadcastMsg.Message); err != nil {
 					// 移除失效连接
 					delete(s.connections, clientID)
+					failCount++
+					s.emitEvent(ServerEvent{
+						Type:      ServerEventError,
+						ClientID:  clientID,
+						Error:     err,
+						Timestamp: time.Now(),
+					})
+				} else {
+					successCount++
 				}
 			}
 			s.mu.RUnlock()
+
+			// 触发广播完成事件
+			s.emitEvent(ServerEvent{
+				Type:      ServerEventBroadcastSent,
+				Data:      broadcastMsg.Message,
+				Timestamp: time.Now(),
+				Metadata: map[string]any{
+					"success_count": successCount,
+					"fail_count":    failCount,
+					"total_clients": successCount + failCount,
+				},
+			})
+
 		case <-s.ctx.Done():
 			return
 		}
@@ -148,14 +338,19 @@ func (s *WebSocketServer) preprocessMessage(msg any, clientID string) (shouldPro
 	// 	s.log.Debugf("duplicate message from %s, ignoring", clientID)
 	// 	return false
 	// }
+	s.emitEvent(ServerEvent{
+		Type:      ServerEventMessageReceived,
+		ClientID:  clientID,
+		Data:      msg,
+		Timestamp: time.Now(),
+	})
 	return true
 }
 
 // 生成消息Hash
 func (s *WebSocketServer) generateMessageHash(msg any, clientID string) string {
-	switch msg.(type) {
+	switch msg := msg.(type) {
 	case WSMessage[any]:
-		msg := msg.(WSMessage[any])
 		content := fmt.Sprintf("%s:%v:%s", msg.Type, msg.Data, clientID)
 		hash := md5.Sum([]byte(content))
 		return fmt.Sprintf("hash_%s_%x", clientID, hash)
