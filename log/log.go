@@ -71,7 +71,7 @@ func (m *LoggerFormatter) Format(entry *log.Entry) ([]byte, error) {
 	} else {
 		b = &bytes.Buffer{}
 	}
-	timestamp := entry.Time.Format("2006-01-02 15:04:05.000")
+	timestamp := entry.Time.Local().Format("2006-01-02 15:04:05.000")
 	msg = entry.Message
 	if m.MsgLength != -1 && len(entry.Message) > m.MsgLength {
 		msg = entry.Message[0:m.MsgLength]
@@ -143,7 +143,7 @@ func (h *Loghook) Fire(entry *log.Entry) error {
 func findCaller(skip int) (string, int) {
 	file := ""
 	line := 0
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		file, line = getCaller(skip + i)
 		if !strings.HasPrefix(file, "logrus") {
 			break
