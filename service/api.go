@@ -74,6 +74,13 @@ func (s *ApiServer) AddWSHandler(handler any) {
 	s.wsHandler = handler
 }
 
+func (s *ApiServer) AddWSEvent(t ServerEventType, event ServerEventHandler) {
+	if s.ws == nil {
+		s.ws = NewWebSocketServer(s.ctx, s.apiAddr, s.version, s.log)
+	}
+	s.ws.OnEvent(t, event)
+}
+
 func (s *ApiServer) AddMiddleware(middleware any) {
 	if reflect.ValueOf(middleware).Kind() != reflect.Ptr {
 		panic("middleware must be a pointer")
@@ -182,8 +189,11 @@ func (s *ApiServer) bindRouter(r *gin.RouterGroup) {
 			}
 		}
 		if len(rs.WebSockets) > 0 {
-			s.ws = NewWebSocketServer(s.ctx, s.apiAddr, s.version, s.log)
+			if s.ws == nil {
+				s.ws = NewWebSocketServer(s.ctx, s.apiAddr, s.version, s.log)
+			}
 			go s.ws.handleBroadcast()
+			go s.ws.eventLoop()
 
 			rg := r.Group("/ws/" + group).Use(s.callMiddleware(rs.Middlewares, false)...)
 			for _, ws := range rs.WebSockets {
@@ -266,16 +276,12 @@ func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
 		})
 
 		// 注册连接
-		s.ws.mu.Lock()
-		s.ws.connections[clientID] = conn
-		s.ws.mu.Unlock()
+		s.ws.addConnection(clientID, conn)
 		s.log.Infof("websocket connection established: %s", clientID)
 
 		// 清理连接
 		defer func() {
-			s.ws.mu.Lock()
-			delete(s.ws.connections, clientID)
-			s.ws.mu.Unlock()
+			s.ws.removeConnection(clientID)
 			s.log.Infof("websocket connection closed: %s", clientID)
 		}()
 
