@@ -224,7 +224,7 @@ func (s *ApiServer) callMiddleware(ms []string, sse bool) (mfs []gin.HandlerFunc
 		}
 		args := s.middlewares[m]
 		m = strings.ToUpper(m[:1]) + m[1:] + "Middleware"
-		if !reflect.ValueOf(s.middleware).Elem().FieldByName("Args").IsValid() {
+		if reflect.ValueOf(s.middleware).Elem().FieldByName("Args").IsValid() {
 			reflect.ValueOf(s.middleware).Elem().FieldByName("Args").Set(reflect.ValueOf(args))
 		}
 		middleware := reflect.ValueOf(s.middleware).MethodByName(m).Interface()
