@@ -162,6 +162,56 @@ func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, mode os.F
 	return u.uploadOSFile(c, path, filename, mode, meta)
 }
 
+func (u *FileSystem) ListDir(path string, hidden bool) ([]map[string]any, error) {
+	var items []map[string]any
+
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	items = append(items, map[string]any{
+		"path":     path,
+		"size":     info.Size(),
+		"mode":     info.Mode(),
+		"mod_time": info.ModTime(),
+		"is_dir":   true,
+		"md5":      "",
+	})
+	for _, entry := range entries {
+		// ignore hidden file
+		if !hidden && strings.HasPrefix(entry.Name(), ".") {
+			continue
+		}
+		if hidden && strings.HasSuffix(entry.Name(), utils.GetEnv("GMI_FILE_META_SUFFIX", ".meta")) {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return nil, err
+		}
+
+		md5, err := u.MD5(path, entry.Name())
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, map[string]any{
+			"path":     entry.Name(),
+			"size":     info.Size(),
+			"mode":     info.Mode(),
+			"mod_time": info.ModTime(),
+			"is_dir":   entry.IsDir(),
+			"md5":      md5,
+		})
+	}
+
+	return items, nil
+}
+
 func (u *FileSystem) MD5(path, filename string) (string, error) {
 	meta, err := u.getFileMeta(path, filename)
 	if err != nil {
