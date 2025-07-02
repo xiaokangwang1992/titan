@@ -129,7 +129,7 @@ func (u *FileSystem) CheckUrl(urlObj *nurl.URL, secret string) error {
 	return nil
 }
 
-func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, mode os.FileMode) error {
+func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, mode os.FileMode) (int64, error) {
 	var (
 		meta *FileMeta
 		err  error
@@ -138,21 +138,21 @@ func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, mode os.F
 	// TODO: 这个地方需要优化，文件锁在 getFileMeta 中获取，但是 setFileMeta 中没有释放，需要优化
 	if meta, err = u.getFileMeta(path, filename); err != nil {
 		u.logger.Errorf("get file meta failed: %s", err)
-		return ErrMetaFileNotFound
+		return 0, ErrMetaFileNotFound
 	}
 	if meta.Status == "uploading" {
-		return ErrFileUploading
+		return 0, ErrFileUploading
 	}
 	if meta.Status == "completed" {
-		return ErrFileAlreadyExists
+		return 0, ErrFileAlreadyExists
 	}
 	if time.Now().Unix() > meta.Expired {
-		return ErrUploadURLExpired
+		return 0, ErrUploadURLExpired
 	}
 
 	meta.Status = "uploading"
 	if err := u.setFileMeta(path, filename, meta); err != nil {
-		return err
+		return 0, err
 	}
 
 	if mode == 0 {
@@ -170,7 +170,7 @@ func (u *FileSystem) MD5(path, filename string) (string, error) {
 	return meta.MD5, nil
 }
 
-func (u *FileSystem) uploadOSFile(c *gin.Context, path, filename string, mode os.FileMode, meta *FileMeta) error {
+func (u *FileSystem) uploadOSFile(c *gin.Context, path, filename string, mode os.FileMode, meta *FileMeta) (int64, error) {
 	// check content type
 	contentType := c.GetHeader("Content-Type")
 	support := false
@@ -181,7 +181,7 @@ func (u *FileSystem) uploadOSFile(c *gin.Context, path, filename string, mode os
 		}
 	}
 	if !support {
-		return fmt.Errorf("unsupported Content-Type: %s, we only support %s", contentType, strings.Join(u.config.FileUploader.FileTypes, ", "))
+		return 0, fmt.Errorf("unsupported Content-Type: %s, we only support %s", contentType, strings.Join(u.config.FileUploader.FileTypes, ", "))
 	}
 	meta.Type = contentType
 
@@ -189,20 +189,20 @@ func (u *FileSystem) uploadOSFile(c *gin.Context, path, filename string, mode os
 	contentRange := c.GetHeader("Content-Range")
 	contentRangeMap, err := utils.ExtractByRegex(`^bytes (?P<start>\d+)-(?P<end>\d+)/(?P<total>\d+)$`, contentRange)
 	if err != nil {
-		return fmt.Errorf("extract content range failed: %v", err)
+		return 0, fmt.Errorf("extract content range failed: %v", err)
 	}
 	totalSize, err := strconv.ParseInt(contentRangeMap["total"], 10, 64)
 	if err != nil {
-		return fmt.Errorf("parse total size failed: %v", err)
+		return 0, fmt.Errorf("parse total size failed: %v", err)
 	}
 	if totalSize > u.config.FileUploader.FileMaxSize {
-		return fmt.Errorf("file size exceeds the maximum limit: %d > %d", totalSize, u.config.FileUploader.FileMaxSize)
+		return 0, fmt.Errorf("file size exceeds the maximum limit: %d > %d", totalSize, u.config.FileUploader.FileMaxSize)
 	}
 
 	tempFilePath := utils.GetTempFilePath(path, filename)
 	tmpFile, err := os.OpenFile(tempFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, mode)
 	if err != nil {
-		return fmt.Errorf("open file failed: %v", err)
+		return 0, fmt.Errorf("open file failed: %v", err)
 	}
 	defer tmpFile.Close()
 
@@ -255,21 +255,21 @@ mainloop:
 		}
 	}
 	if err != nil && err != io.EOF {
-		return err
+		return 0, err
 	}
 	md5Hash := fmt.Sprintf("%x", hasher.Sum(nil))
 	meta.MD5 = md5Hash
 	info, err := os.Stat(filepath.Join(path, filename))
 	if err != nil {
-		return err
+		return info.Size(), err
 	}
 	if info.Size() != totalSize {
 		meta.Status = "incomplete"
-		return ErrFileUploadIncomplete
+		return totalSize, ErrFileUploadIncomplete
 	}
 	os.Rename(tempFilePath, filepath.Join(path, filename))
 	meta.Status = "completed"
-	return nil
+	return totalSize, nil
 }
 
 func (u *FileSystem) getFileMeta(path, fileName string) (*FileMeta, error) {
