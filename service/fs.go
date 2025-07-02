@@ -15,6 +15,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
+	nurl "net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -36,15 +38,17 @@ var (
 	ErrFileUploadIncomplete = errors.New("file upload incomplete")
 )
 
-func DefaultUploadConfig() *config.FileUploader {
-	return &config.FileUploader{
-		FileMaxSize: 1024 * 1024 * 1024 * 100, // 100GB
-		ChunkSize:   1024 * 1024 * 100,        // 100MB
-		BufferSize:  1024 * 1024,              // 1MB
-		FileTypes:   []string{"application/octet-stream", "image/jpeg", "image/png", "image/gif", "image/webp"},
-		FormName:    "file",
-		ExpireTime:  3600, // 1 hour
-		PathMode:    0755, // 0755
+func DefaultFileSystemConfig() *config.FileSystem {
+	return &config.FileSystem{
+		FileUploader: &config.FileUploader{
+			FileMaxSize: 1024 * 1024 * 1024 * 100, // 100GB
+			ChunkSize:   1024 * 1024 * 100,        // 100MB
+			BufferSize:  1024 * 1024,              // 1MB
+			FileTypes:   []string{"application/octet-stream", "image/jpeg", "image/png", "image/gif", "image/webp"},
+			FormName:    "file",
+			ExpireTime:  3600, // 1 hour
+			PathMode:    0755, // 0755
+		},
 	}
 }
 
@@ -69,16 +73,15 @@ func NewFileSystem(ctx context.Context, config *config.FileSystem) *FileSystem {
 	}
 }
 
-func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string) (string, error) {
+func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string, pathParams []string) (string, error) {
 	var (
-		meta       *FileMeta
-		err        error
-		pathParams = []string{
-			fmt.Sprintf("file=%s", filename),
-			fmt.Sprintf("path=%s", path),
-		}
+		meta *FileMeta
+		err  error
 	)
-
+	pathParams = append(pathParams, []string{
+		fmt.Sprintf("file=%s", filename),
+		fmt.Sprintf("path=%s", path),
+	}...)
 	secret, err = cipher.EncryptCompact([]byte(strings.Join(pathParams, "&")), secret)
 	if err != nil {
 		return "", err
@@ -99,6 +102,31 @@ func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string) (stri
 	}
 
 	return fmt.Sprintf("%s?%s", url, strings.Join(pathParams, "&")), nil
+}
+
+func (u *FileSystem) CheckUrl(c *gin.Context, secret string) error {
+	urlObj, err := nurl.Parse("?" + c.Request.URL.RawQuery) // 添加 ? 前缀使其成为查询字符串
+	if err != nil {
+		return fmt.Errorf("parse url failed: %v", err)
+	}
+
+	usecret := urlObj.Query().Get("secret")
+
+	dsecret, err := cipher.DecryptCompact(usecret, secret)
+	if err != nil {
+		return fmt.Errorf("decrypt secret failed: %v", err)
+	}
+
+	ur, err := nurl.Parse("?" + string(dsecret) + "&secret=" + secret)
+	if err != nil {
+		return fmt.Errorf("parse url failed: %v", err)
+	}
+
+	if !utils.EqualURLSmart(ur.String(), urlObj.String()) {
+		return fmt.Errorf("invalid params, please check your url")
+	}
+
+	return nil
 }
 
 func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, mode os.FileMode) error {
