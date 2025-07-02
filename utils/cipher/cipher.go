@@ -30,29 +30,51 @@ import (
 	"crypto/cipher"
 	"encoding/base64"
 	"fmt"
+	"os"
+	"strings"
 )
 
-// TODO: key后期改成从配置文件中读取
 var (
-	// AES_KEY = "KHGSI69YBWGS0TWX"
-	AES_IV = "3010201735544643"
+	AES_IV = getEnv("AES_IV", "3010201735544643")
 )
 
+// Encrypt data to string
 func Encrypt(data []byte, key string) (string, error) {
-	//生成 cipher.Block 数据块
+	// create cipher.Block
 	block, err := aes.NewCipher([]byte(key))
 	if err != nil {
 		return "", err
 	}
-	//填充内容，如果不足16位字符
+	// padding content, if less than 16 characters
 	blockSize := block.BlockSize()
 	originData := pad(data, blockSize)
-	//加密方式
+	// encryption method
 	blockMode := cipher.NewCBCEncrypter(block, []byte(AES_IV))
-	//加密，输出到[]byte数组
+	// encrypt, output to []byte array
 	crypted := make([]byte, len(originData))
 	blockMode.CryptBlocks(crypted, originData)
-	return base64.StdEncoding.EncodeToString(crypted), nil
+	// use StdEncoding and remove possible newline characters
+	result := base64.StdEncoding.EncodeToString(crypted)
+	return strings.ReplaceAll(result, "\n", ""), nil
+}
+
+// EncryptCompact encrypt data to compact base64URL encoded string (no padding characters)
+func EncryptCompact(data []byte, key string) (string, error) {
+	// create cipher.Block
+	block, err := aes.NewCipher([]byte(key))
+	if err != nil {
+		return "", err
+	}
+	// padding content, if less than 16 characters
+	blockSize := block.BlockSize()
+	originData := pad(data, blockSize)
+	// encryption method
+	blockMode := cipher.NewCBCEncrypter(block, []byte(AES_IV))
+	// encrypt, output to []byte array
+	crypted := make([]byte, len(originData))
+	blockMode.CryptBlocks(crypted, originData)
+	// use RawURLEncoding to ensure no padding characters and newline characters
+	return base64.RawURLEncoding.EncodeToString(crypted), nil
 }
 
 func Decrypt(decryptText, key string) ([]byte, error) {
@@ -60,18 +82,54 @@ func Decrypt(decryptText, key string) ([]byte, error) {
 	if err != nil || len(decodeData) == 0 {
 		return nil, fmt.Errorf("decrypt text is error")
 	}
-	//生成密码数据块cipher.Block
+	// create cipher.Block
 	block, err := aes.NewCipher([]byte(key))
 	if err != nil {
 		return nil, err
 	}
-	//解密模式
+	// decryption mode
 	blockMode := cipher.NewCBCDecrypter(block, []byte(AES_IV))
-	//输出到[]byte数组
+	// output to []byte array
 	originData := make([]byte, len(decodeData))
 	blockMode.CryptBlocks(originData, decodeData)
-	//去除填充,并返回
+	// remove padding, and return
 	return unPad(originData), nil
+}
+
+// DecryptCompact decrypt data encrypted by EncryptCompact
+func DecryptCompact(decryptText, key string) ([]byte, error) {
+	decodeData, err := base64.RawURLEncoding.DecodeString(decryptText)
+	if err != nil || len(decodeData) == 0 {
+		return nil, fmt.Errorf("decrypt text is error")
+	}
+	// create cipher.Block
+	block, err := aes.NewCipher([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+	// decryption mode
+	blockMode := cipher.NewCBCDecrypter(block, []byte(AES_IV))
+	// output to []byte array
+	originData := make([]byte, len(decodeData))
+	blockMode.CryptBlocks(originData, decodeData)
+	// remove padding, and return
+	return unPad(originData), nil
+}
+
+func CheckEncrypt(cipherText string, key string) bool {
+	decryptText, err := Decrypt(cipherText, key)
+	if err != nil {
+		return false
+	}
+	return decryptText != nil
+}
+
+func CheckEncryptCompact(cipherText string, key string) bool {
+	decryptText, err := DecryptCompact(cipherText, key)
+	if err != nil {
+		return false
+	}
+	return decryptText != nil
 }
 
 func pad(cipherText []byte, blockSize int) []byte {
@@ -82,7 +140,14 @@ func pad(cipherText []byte, blockSize int) []byte {
 
 func unPad(cipherText []byte) []byte {
 	length := len(cipherText)
-	//去掉最后一次的padding
+	// remove the last padding
 	unPadding := int(cipherText[length-1])
 	return cipherText[:(length - unPadding)]
+}
+
+func getEnv(key, value string) string {
+	if env := os.Getenv(key); env != "" {
+		return env
+	}
+	return value
 }

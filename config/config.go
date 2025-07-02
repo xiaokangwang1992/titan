@@ -51,6 +51,20 @@ type Grpc struct {
 	ListenAddr string `yaml:"listen-addr,omitempty"`
 }
 
+type FileUploader struct {
+	FileMaxSize int64       `yaml:"file-max-size,omitempty"`
+	ChunkSize   int64       `yaml:"chunk-size,omitempty"`
+	BufferSize  int64       `yaml:"buffer-size,omitempty"`
+	FileTypes   []string    `yaml:"file-types,omitempty"`
+	FormName    string      `yaml:"form-name,omitempty"`
+	ExpireTime  int64       `yaml:"expire-time,omitempty"`
+	PathMode    os.FileMode `yaml:"path-mode,omitempty"`
+}
+
+type FileSystem struct {
+	FileUploader *FileUploader `yaml:"file-uploader,omitempty"`
+}
+
 type Scheduler struct {
 	Enabled bool                   `yaml:"enabled,omitempty"`
 	Name    string                 `yaml:"name,omitempty"`
@@ -73,6 +87,7 @@ type Config struct {
 	Mysql      string      `yaml:"mysql,omitempty"`
 	Redis      string      `yaml:"redis,omitempty"`
 	Oss        string      `yaml:"oss,omitempty"`
+	FileSystem *FileSystem `yaml:"filesystem,omitempty"`
 	Schedulers []Scheduler `yaml:"schedulers,omitempty"`
 	Business   any         `yaml:"business,omitempty"`
 	Ants       *Ants       `yaml:"ants,omitempty"`
@@ -88,7 +103,7 @@ func getConfig(f string) (Config, error) {
 	if f == "" {
 		f = os.Getenv("APP_CONFIG_PATH")
 	}
-	err := utils.ReadFileToStruct(f, &ret, "yaml")
+	err := utils.ReadFileToStruct(f, &ret, "yaml", false)
 	return ret, err
 }
 
@@ -98,7 +113,7 @@ func getRoutes() (map[string]ApiGroup, error) {
 		ret = cfg.Http.Routes
 	)
 	if ret == nil {
-		err = utils.ReadFileToStruct(cfg.Http.Route, &ret, "yaml")
+		err = utils.ReadFileToStruct(cfg.Http.Route, &ret, "yaml", false)
 	}
 	return ret, err
 }

@@ -101,7 +101,7 @@ var (
 func getConfig() (Config, error) {
 	var ret Config
 	f := os.Getenv("APP_CONFIG_PATH")
-	err := utils.ReadFileToStruct(f, &ret, "yaml")
+	err := utils.ReadFileToStruct(f, &ret, "yaml", false)
 	return ret, err
 }
 
@@ -111,7 +111,7 @@ func getRoutes() (map[string]ApiGroup, error) {
 		ret = cfg.Http.Routes
 	)
 	if ret == nil {
-		err = utils.ReadFileToStruct(cfg.Http.Route, &ret, "yaml")
+		err = utils.ReadFileToStruct(cfg.Http.Route, &ret, "yaml", false)
 	}
 	return ret, err
 }
