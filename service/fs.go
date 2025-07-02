@@ -15,11 +15,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 
 	nurl "net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -60,23 +60,26 @@ type FileMeta struct {
 }
 
 type FileSystem struct {
-	ctx    context.Context
-	config *config.FileSystem
-	logger *logrus.Entry
+	ctx     context.Context
+	config  *config.FileSystem
+	logger  *logrus.Entry
+	baseDir string
 }
 
-func NewFileSystem(ctx context.Context, config *config.FileSystem) *FileSystem {
+func NewFileSystem(ctx context.Context, baseDir string, config *config.FileSystem) *FileSystem {
 	return &FileSystem{
-		ctx:    ctx,
-		config: config,
-		logger: logrus.WithField("module", "filesystem"),
+		ctx:     ctx,
+		config:  config,
+		baseDir: baseDir,
+		logger:  logrus.WithField("module", "filesystem"),
 	}
 }
 
 func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string, pathParams []string) (string, error) {
 	var (
-		meta *FileMeta
-		err  error
+		meta    *FileMeta
+		err     error
+		absPath = u.getAbsPath(path)
 	)
 	pathParams = append(pathParams, []string{
 		fmt.Sprintf("file=%s", filename),
@@ -88,7 +91,7 @@ func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string, pathP
 	}
 	pathParams = append(pathParams, fmt.Sprintf("secret=%s", secret))
 
-	if meta, err = u.getFileMeta(path, filename); err == nil {
+	if meta, err = u.getFileMeta(absPath, filename); err == nil {
 		meta.Expired = time.Now().Unix() + u.config.FileUploader.ExpireTime
 	} else {
 		meta = &FileMeta{
@@ -97,7 +100,8 @@ func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string, pathP
 			Expired: time.Now().Unix() + u.config.FileUploader.ExpireTime,
 		}
 	}
-	if err := u.setFileMeta(path, filename, meta); err != nil {
+	u.logger.Infof("generate meta: %v", meta)
+	if err := u.setFileMeta(absPath, filename, meta); err != nil {
 		return "", err
 	}
 	u.logger.Infof("generate upload url: %s?%s", url, strings.Join(pathParams, "&"))
@@ -130,13 +134,18 @@ func (u *FileSystem) CheckUrl(urlObj *nurl.URL, secret string) error {
 
 func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, mode os.FileMode) (int64, error) {
 	var (
-		meta *FileMeta
-		err  error
+		meta    *FileMeta
+		err     error
+		absPath = u.getAbsPath(path)
 	)
-
+	defer func() {
+		if err := u.setFileMeta(absPath, filename, meta); err != nil {
+			u.logger.Errorf("set file meta failed: %s", err)
+		}
+	}()
+	u.logger.Infof("upload file: %s, %s, %d", path, filename, mode)
 	// TODO: 这个地方需要优化，文件锁在 getFileMeta 中获取，但是 setFileMeta 中没有释放，需要优化
-	if meta, err = u.getFileMeta(path, filename); err != nil {
-		u.logger.Errorf("get file meta failed: %s", err)
+	if meta, err = u.getFileMeta(absPath, filename); err != nil {
 		return 0, ErrMetaFileNotFound
 	}
 	if meta.Status == "uploading" {
@@ -149,27 +158,64 @@ func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, mode os.F
 		return 0, ErrUploadURLExpired
 	}
 
+	// check content type
+	contentType := c.GetHeader("Content-Type")
+	support := false
+	for _, fileType := range u.config.FileUploader.FileTypes {
+		if strings.HasPrefix(contentType, fileType) {
+			support = true
+			break
+		}
+	}
+	if !support {
+		return 0, fmt.Errorf("unsupported Content-Type: %s, we only support %s", contentType, strings.Join(u.config.FileUploader.FileTypes, ", "))
+	}
+	meta.Type = contentType
+
 	meta.Status = "uploading"
-	if err := u.setFileMeta(path, filename, meta); err != nil {
+	if err := u.setFileMeta(absPath, filename, meta); err != nil {
 		return 0, err
+	}
+
+	// check content range
+	contentRange := c.GetHeader("Content-Range")
+	contentRangeMap, err := utils.ExtractByRegex(`^bytes (?P<start>\d+)-(?P<end>\d+)/(?P<total>\d+)$`, contentRange)
+	if err != nil {
+		return 0, fmt.Errorf("extract content range failed: %v", err)
+	}
+	totalSize, err := strconv.ParseInt(contentRangeMap["total"], 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("parse total size failed: %v", err)
+	}
+	if totalSize > u.config.FileUploader.FileMaxSize {
+		return 0, fmt.Errorf("file size exceeds the maximum limit: %d > %d", totalSize, u.config.FileUploader.FileMaxSize)
 	}
 
 	if mode == 0 {
 		mode = u.config.FileUploader.PathMode // Default file permissions
 	}
 	// upload file
-	return u.uploadOSFile(c, path, filename, mode, meta)
+	md5, totalSize, err := u.uploadOSFile(c, absPath, filename, mode, totalSize)
+	meta.MD5 = md5
+	meta.Status = "incomplete"
+	if err == nil {
+		meta.Status = "completed"
+	}
+	return totalSize, err
 }
 
-func (u *FileSystem) ListDir(releasePath, path string, hidden bool) ([]map[string]any, error) {
-	var items []map[string]any
+func (u *FileSystem) ListDir(path string, hidden bool) ([]map[string]any, error) {
+	var (
+		items   []map[string]any
+		absPath = u.getAbsPath(path)
+	)
 
-	entries, err := os.ReadDir(path)
+	entries, err := os.ReadDir(absPath)
 	if err != nil {
 		return nil, err
 	}
 
-	info, err := os.Stat(path)
+	info, err := os.Stat(absPath)
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +247,7 @@ func (u *FileSystem) ListDir(releasePath, path string, hidden bool) ([]map[strin
 			}
 		}
 		items = append(items, map[string]any{
-			"path":     strings.TrimPrefix(entry.Name(), releasePath),
+			"path":     strings.TrimPrefix(entry.Name(), u.baseDir),
 			"size":     info.Size(),
 			"mode":     info.Mode(),
 			"mod_time": info.ModTime().Format(time.DateTime),
@@ -214,54 +260,29 @@ func (u *FileSystem) ListDir(releasePath, path string, hidden bool) ([]map[strin
 }
 
 func (u *FileSystem) MD5(path, filename string) (string, error) {
-	meta, err := u.getFileMeta(path, filename)
+	absPath := u.getAbsPath(path)
+	meta, err := u.getFileMeta(absPath, filename)
 	if err != nil {
 		return "", err
 	}
 	return meta.MD5, nil
 }
 
-func (u *FileSystem) uploadOSFile(c *gin.Context, path, filename string, mode os.FileMode, meta *FileMeta) (int64, error) {
-	// check content type
-	contentType := c.GetHeader("Content-Type")
-	support := false
-	for _, fileType := range u.config.FileUploader.FileTypes {
-		if strings.HasPrefix(contentType, fileType) {
-			support = true
-			break
-		}
-	}
-	if !support {
-		return 0, fmt.Errorf("unsupported Content-Type: %s, we only support %s", contentType, strings.Join(u.config.FileUploader.FileTypes, ", "))
-	}
-	meta.Type = contentType
-
-	// check content range
-	contentRange := c.GetHeader("Content-Range")
-	contentRangeMap, err := utils.ExtractByRegex(`^bytes (?P<start>\d+)-(?P<end>\d+)/(?P<total>\d+)$`, contentRange)
+func (u *FileSystem) uploadOSFile(c *gin.Context, absPath, filename string, mode os.FileMode, totalSize int64) (string, int64, error) {
+	tempFilePath := utils.GetTempFilePath(absPath, filename)
+	info, err := os.Stat(tempFilePath)
 	if err != nil {
-		return 0, fmt.Errorf("extract content range failed: %v", err)
+		return "", info.Size(), err
 	}
-	totalSize, err := strconv.ParseInt(contentRangeMap["total"], 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("parse total size failed: %v", err)
+	if info.Size() > totalSize {
+		return "", info.Size(), fmt.Errorf("file size is greater than the total size: %d > %d", info.Size(), totalSize)
 	}
-	if totalSize > u.config.FileUploader.FileMaxSize {
-		return 0, fmt.Errorf("file size exceeds the maximum limit: %d > %d", totalSize, u.config.FileUploader.FileMaxSize)
-	}
-
-	tempFilePath := utils.GetTempFilePath(path, filename)
 	tmpFile, err := os.OpenFile(tempFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, mode)
 	if err != nil {
-		return 0, fmt.Errorf("open file failed: %v", err)
+		return "", 0, fmt.Errorf("open file failed: %v", err)
 	}
 	defer tmpFile.Close()
 
-	defer func() {
-		if err := u.setFileMeta(path, filename, meta); err != nil {
-			u.logger.Errorf("set file meta failed: %s", err)
-		}
-	}()
 	var (
 		uploadSize int64
 		buffer     = make([]byte, u.config.FileUploader.BufferSize)
@@ -306,25 +327,21 @@ mainloop:
 		}
 	}
 	if err != nil && err != io.EOF {
-		return 0, err
+		return "", 0, err
 	}
-	md5Hash := fmt.Sprintf("%x", hasher.Sum(nil))
-	meta.MD5 = md5Hash
-	info, err := os.Stat(filepath.Join(path, filename))
+	info, _ = os.Stat(tempFilePath)
 	if err != nil {
-		return info.Size(), err
+		return "", info.Size(), err
 	}
-	if info.Size() != totalSize {
-		meta.Status = "incomplete"
-		return totalSize, ErrFileUploadIncomplete
+	if info.Size() < totalSize {
+		return "", totalSize, ErrFileUploadIncomplete
 	}
-	os.Rename(tempFilePath, filepath.Join(path, filename))
-	meta.Status = "completed"
-	return totalSize, nil
+	os.Rename(tempFilePath, filepath.Join(absPath, filename))
+	return fmt.Sprintf("%x", hasher.Sum(nil)), totalSize, nil
 }
 
-func (u *FileSystem) getFileMeta(path, fileName string) (*FileMeta, error) {
-	metaFile := u.getMetaPath(path, fileName)
+func (u *FileSystem) getFileMeta(absPath, fileName string) (*FileMeta, error) {
+	metaFile := u.getMetaPath(absPath, fileName)
 	var meta FileMeta
 	if err := utils.ReadFileToStruct(metaFile, &meta, "json", true); err != nil {
 		return nil, err
@@ -332,8 +349,8 @@ func (u *FileSystem) getFileMeta(path, fileName string) (*FileMeta, error) {
 	return &meta, nil
 }
 
-func (u *FileSystem) setFileMeta(path, fileName string, meta *FileMeta) error {
-	metaFile := u.getMetaPath(path, fileName)
+func (u *FileSystem) setFileMeta(absPath, fileName string, meta *FileMeta) error {
+	metaFile := u.getMetaPath(absPath, fileName)
 	if meta == nil {
 		meta = &FileMeta{
 			MD5:     "",
@@ -345,14 +362,21 @@ func (u *FileSystem) setFileMeta(path, fileName string, meta *FileMeta) error {
 	if err != nil {
 		return err
 	}
+	u.logger.Infof("set file meta: %s, %v", metaFile, string(metaStr))
 	if err := utils.WriteFile(metaFile, metaStr, 0644, true); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (u *FileSystem) getMetaPath(path, fileName string) string {
+func (u *FileSystem) getMetaPath(absPath, fileName string) string {
 	fileName = strings.TrimPrefix(fileName, "/")
 	fileName = strings.TrimPrefix(fileName, ".")
-	return filepath.Join(path, fmt.Sprintf(".%s%s", fileName, utils.GetEnv("GMI_FILE_META_SUFFIX", ".meta")))
+	return filepath.Join(absPath, fmt.Sprintf(".%s%s", fileName, utils.GetEnv("GMI_FILE_META_SUFFIX", ".meta")))
+}
+
+func (u *FileSystem) getAbsPath(path string) string {
+	path = strings.TrimPrefix(path, "/")
+	path = strings.TrimPrefix(path, ".")
+	return filepath.Join(u.baseDir, path)
 }
