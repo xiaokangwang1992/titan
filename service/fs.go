@@ -104,11 +104,11 @@ func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string, pathP
 	return fmt.Sprintf("%s?%s", url, strings.Join(pathParams, "&")), nil
 }
 
-func (u *FileSystem) CheckUrl(c *gin.Context, secret string) error {
-	urlObj, err := nurl.Parse("?" + c.Request.URL.RawQuery) // 添加 ? 前缀使其成为查询字符串
-	if err != nil {
-		return fmt.Errorf("parse url failed: %v", err)
+func (u *FileSystem) CheckUrl(urlObj *nurl.URL, secret string) error {
+	if urlObj == nil {
+		return fmt.Errorf("url is nil")
 	}
+	u.logger.Infof("check url: %s", urlObj.String())
 
 	usecret := urlObj.Query().Get("secret")
 
