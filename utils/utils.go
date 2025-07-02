@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 	"runtime"
 	"strings"
 	"text/template"
@@ -175,4 +176,32 @@ func GetEnv(key, value string) string {
 		return env
 	}
 	return value
+}
+
+// ExtractByRegex 提取正则表达式匹配的结果
+func ExtractByRegex(pattern, text string) (map[string]string, error) {
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("compile regex failed: %v", err)
+	}
+
+	match := re.FindStringSubmatch(text)
+	if match == nil {
+		return nil, nil
+	}
+
+	result := make(map[string]string)
+	groupNames := re.SubexpNames()
+
+	for i, name := range groupNames {
+		if i != 0 {
+			if name != "" {
+				result[name] = match[i]
+			} else {
+				result[fmt.Sprintf("group%d", i)] = match[i]
+			}
+		}
+	}
+
+	return result, nil
 }

@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"gopkg.in/yaml.v2"
 )
@@ -29,15 +30,22 @@ func IsExists(filename string) bool {
 	return true
 }
 
-func WriteFile(filename string, content []byte) error {
+func WriteFile(filename string, content []byte, mode os.FileMode, lock bool) error {
 	if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
 		return err
 	}
-	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
+	if lock {
+		err = syscall.Flock(int(f.Fd()), syscall.LOCK_EX)
+		if err != nil {
+			return err
+		}
+		defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+	}
 
 	if _, err := f.Write(content); err != nil {
 		return err
@@ -45,12 +53,19 @@ func WriteFile(filename string, content []byte) error {
 	return nil
 }
 
-func ReadFileToStruct(filename string, v any, ftype string) error {
-	file, err := ReadFile(filename)
+func ReadFileToStruct(filename string, v any, ftype string, lock bool) error {
+	file, err := ReadFile(filename, lock)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
+	if lock {
+		err = syscall.Flock(int(file.Fd()), syscall.LOCK_EX)
+		if err != nil {
+			return err
+		}
+		defer syscall.Flock(int(file.Fd()), syscall.LOCK_UN)
+	}
 
 	content, err := io.ReadAll(file)
 	if err != nil {
@@ -68,7 +83,37 @@ func ReadFileToStruct(filename string, v any, ftype string) error {
 	return err
 }
 
-func ReadFile(f string) (io.ReadCloser, error) {
+// func ReadFileToStructWithLock(filename string, v any, ftype string) error {
+// 	file, err := ReadFile(filename, true)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer file.Close()
+
+// 	// 获取排他锁
+// 	err = syscall.Flock(int(file.Fd()), syscall.LOCK_EX)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer syscall.Flock(int(file.Fd()), syscall.LOCK_UN)
+
+// 	content, err := io.ReadAll(file)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	if ftype == "yaml" {
+// 		if err := yaml.Unmarshal(content, v); err != nil {
+// 			return err
+// 		}
+// 		return err
+// 	}
+// 	if err := json.Unmarshal(content, v); err != nil {
+// 		return err
+// 	}
+// 	return err
+// }
+
+func ReadFile(f string, lock bool) (*os.File, error) {
 	if f == "-" {
 		stat, err := os.Stdin.Stat()
 		if err != nil {
@@ -259,4 +304,8 @@ func Zip(source, target string) error {
 	})
 
 	return nil
+}
+
+func GetTempFilePath(path, filename string) string {
+	return filepath.Join(path, "."+filename+GetEnv("TEMP_FILE_SUFFIX", ".tmp"))
 }
