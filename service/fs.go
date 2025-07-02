@@ -100,7 +100,7 @@ func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string, pathP
 	if err := u.setFileMeta(path, filename, meta); err != nil {
 		return "", err
 	}
-
+	u.logger.Infof("generate upload url: %s?%s", url, strings.Join(pathParams, "&"))
 	return fmt.Sprintf("%s?%s", url, strings.Join(pathParams, "&")), nil
 }
 
@@ -108,8 +108,6 @@ func (u *FileSystem) CheckUrl(urlObj *nurl.URL, secret string) error {
 	if urlObj == nil {
 		return fmt.Errorf("url is nil")
 	}
-	u.logger.Infof("check url: %s", urlObj.String())
-
 	usecret := urlObj.Query().Get("secret")
 
 	dsecret, err := cipher.DecryptCompact(usecret, secret)
@@ -117,13 +115,14 @@ func (u *FileSystem) CheckUrl(urlObj *nurl.URL, secret string) error {
 		return fmt.Errorf("decrypt secret failed: %v", err)
 	}
 
-	ur, err := nurl.Parse("?" + string(dsecret) + "&secret=" + secret)
+	ur, err := nurl.Parse("?" + string(dsecret))
 	if err != nil {
 		return fmt.Errorf("parse url failed: %v", err)
 	}
 
-	if !utils.EqualURLSmart(ur.String(), urlObj.String()) {
-		return fmt.Errorf("invalid params, please check your url")
+	if ok, err := utils.EqualURL(ur.String(), urlObj.String(),
+		[]string{"path", "kind", "name", "is_org", "mode", "force", "filename"}); !ok {
+		return fmt.Errorf("invalid url: %s, please check your url", err.Error())
 	}
 
 	return nil
@@ -162,7 +161,7 @@ func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, mode os.F
 	return u.uploadOSFile(c, path, filename, mode, meta)
 }
 
-func (u *FileSystem) ListDir(path string, hidden bool) ([]map[string]any, error) {
+func (u *FileSystem) ListDir(releasePath, path string, hidden bool) ([]map[string]any, error) {
 	var items []map[string]any
 
 	entries, err := os.ReadDir(path)
@@ -175,10 +174,10 @@ func (u *FileSystem) ListDir(path string, hidden bool) ([]map[string]any, error)
 		return nil, err
 	}
 	items = append(items, map[string]any{
-		"path":     path,
+		"path":     "/",
 		"size":     info.Size(),
 		"mode":     info.Mode(),
-		"mod_time": info.ModTime(),
+		"mod_time": info.ModTime().Format(time.DateTime),
 		"is_dir":   true,
 		"md5":      "",
 	})
@@ -194,16 +193,18 @@ func (u *FileSystem) ListDir(path string, hidden bool) ([]map[string]any, error)
 		if err != nil {
 			return nil, err
 		}
-
-		md5, err := u.MD5(path, entry.Name())
-		if err != nil {
-			return nil, err
+		md5 := ""
+		if !info.IsDir() {
+			md5, err = u.MD5(path, entry.Name())
+			if err != nil {
+				return nil, err
+			}
 		}
 		items = append(items, map[string]any{
-			"path":     entry.Name(),
+			"path":     strings.TrimPrefix(entry.Name(), releasePath),
 			"size":     info.Size(),
 			"mode":     info.Mode(),
-			"mod_time": info.ModTime(),
+			"mod_time": info.ModTime().Format(time.DateTime),
 			"is_dir":   entry.IsDir(),
 			"md5":      md5,
 		})
@@ -353,5 +354,5 @@ func (u *FileSystem) setFileMeta(path, fileName string, meta *FileMeta) error {
 func (u *FileSystem) getMetaPath(path, fileName string) string {
 	fileName = strings.TrimPrefix(fileName, "/")
 	fileName = strings.TrimPrefix(fileName, ".")
-	return filepath.Join(path, fmt.Sprintf("%s/.%s%s", path, fileName, utils.GetEnv("GMI_FILE_META_SUFFIX", ".meta")))
+	return filepath.Join(path, fmt.Sprintf(".%s%s", fileName, utils.GetEnv("GMI_FILE_META_SUFFIX", ".meta")))
 }

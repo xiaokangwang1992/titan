@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"regexp"
 	"runtime"
@@ -49,8 +50,7 @@ func Struct2Yaml(data any) string {
 }
 
 func RemoveDuplicatesAndEmpty(a []string) (ret []string) {
-	a_len := len(a)
-	for i := 0; i < a_len; i++ {
+	for i := range a {
 		if (i > 0 && a[i-1] == a[i]) || len(a[i]) == 0 {
 			continue
 		}
@@ -204,4 +204,28 @@ func ExtractByRegex(pattern, text string) (map[string]string, error) {
 	}
 
 	return result, nil
+}
+
+func EqualURL(url1, url2 string, keyParams []string) (bool, error) {
+	u1, err := url.Parse(url1)
+	if err != nil {
+		return false, err
+	}
+	u2, err := url.Parse(url2)
+	if err != nil {
+		return false, err
+	}
+
+	if u1.Scheme != u2.Scheme || u1.Host != u2.Host || u1.Path != u2.Path {
+		return false, fmt.Errorf("scheme or host or path not equal: %s, %s", url1, url2)
+	}
+
+	for _, param := range keyParams {
+		if u1.Query().Get(param) != u2.Query().Get(param) {
+			return false, fmt.Errorf("param %s not equal: %s, %s", param, u1.Query().Get(param), u2.Query().Get(param))
+		}
+	}
+
+	return true, nil
+
 }
