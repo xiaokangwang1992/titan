@@ -117,7 +117,7 @@ func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string, pathP
 	return fmt.Sprintf("%s?%s", url, strings.Join(pathParams, "&")), nil
 }
 
-func (u *FileSystem) CheckUrl(urlObj *nurl.URL, secret string) error {
+func (u *FileSystem) CheckUrl(urlObj *nurl.URL, secret string, keyParams []string) error {
 	if urlObj == nil {
 		return fmt.Errorf("url is nil")
 	}
@@ -133,8 +133,7 @@ func (u *FileSystem) CheckUrl(urlObj *nurl.URL, secret string) error {
 		return fmt.Errorf("parse url failed: %v", err)
 	}
 
-	if ok, err := utils.EqualURL(ur.String(), urlObj.String(),
-		[]string{"path", "kind", "name", "is_org", "mode", "force", "filename"}); !ok {
+	if ok, err := utils.EqualURL(ur.String(), urlObj.String(), keyParams); !ok {
 		return fmt.Errorf("invalid url: %s, please check your url", err.Error())
 	}
 
