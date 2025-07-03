@@ -54,7 +54,7 @@ func DefaultFileSystemConfig() *config.FileSystem {
 
 type FileMeta struct {
 	MD5     string `json:"md5"`
-	Status  string `json:"status"` // uploading, completed, incomplete, overwrite, unknown
+	Status  string `json:"status"` // uploading, completed, incomplete, unknown
 	Expired int64  `json:"expired"`
 	Type    string `json:"type"`
 }
@@ -75,7 +75,7 @@ func NewFileSystem(ctx context.Context, baseDir string, config *config.FileSyste
 	}
 }
 
-func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string, overwrite bool, pathParams []string) (string, error) {
+func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string, pathParams []string) (string, error) {
 	var (
 		meta    *FileMeta
 		err     error
@@ -99,9 +99,6 @@ func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string, overw
 			Status:  "incomplete",
 			Expired: time.Now().Unix() + u.config.FileUploader.ExpireTime,
 		}
-	}
-	if overwrite {
-		meta.Status = "overwrite"
 	}
 	u.logger.Infof("generate meta: %v", meta)
 	if err := u.setFileMeta(absPath, filename, meta); err != nil {
@@ -135,7 +132,7 @@ func (u *FileSystem) CheckUrl(urlObj *nurl.URL, secret string) error {
 	return nil
 }
 
-func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, mode os.FileMode) (int64, error) {
+func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, overwrite bool, mode os.FileMode) (int64, error) {
 	var (
 		meta    *FileMeta
 		err     error
@@ -151,10 +148,10 @@ func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, mode os.F
 	if meta, err = u.getFileMeta(absPath, filename); err != nil {
 		return 0, ErrMetaFileNotFound
 	}
-	if meta.Status == "overwrite" {
+	if overwrite {
 		os.Remove(filepath.Join(absPath, filename))
-		os.Remove(utils.GetTempFilePath(absPath, filename))
 		meta.Status = "incomplete"
+		meta.MD5 = ""
 	}
 	if meta.Status == "uploading" {
 		return 0, ErrFileUploading
