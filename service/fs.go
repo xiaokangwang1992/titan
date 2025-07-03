@@ -44,10 +44,19 @@ func DefaultFileSystemConfig() *config.FileSystem {
 			FileMaxSize: 1024 * 1024 * 1024 * 100, // 100GB
 			ChunkSize:   1024 * 1024 * 100,        // 100MB
 			BufferSize:  1024 * 1024,              // 1MB
-			FileTypes:   []string{"application/octet-stream", "image/jpeg", "image/png", "image/gif", "image/webp"},
-			FormName:    "file",
-			ExpireTime:  3600, // 1 hour
-			PathMode:    0755, // 0755
+			FileTypes: []string{"application/octet-stream", "image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf",
+				"application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.ms-excel",
+				"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-powerpoint",
+				"application/vnd.openxmlformats-officedocument.presentationml.presentation", "application/zip", "application/x-7z-compressed",
+				"application/x-rar-compressed", "application/x-tar", "application/x-gzip", "application/x-bzip2", "application/x-xz",
+				"application/x-zstd", "application/x-lzip", "application/x-lzma", "application/x-lz4", "application/x-zstd",
+				"application/x-lzip", "application/x-lzma", "application/x-lz4", "application/x-zstd", "application/x-lzip",
+				"application/x-lzma", "application/x-lz4", "application/x-zstd", "application/x-lzip", "application/x-lzma",
+				"application/x-lz4", "application/x-zstd", "application/x-lzip", "application/x-lzma", "application/x-lz4",
+			},
+			FormName:   "file",
+			ExpireTime: 3600, // 1 hour
+			PathMode:   0755, // 0755
 		},
 	}
 }
@@ -210,20 +219,20 @@ func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, overwrite
 	return uploadSize, err
 }
 
-func (u *FileSystem) ListDir(path string, hidden bool) ([]map[string]any, error) {
+func (u *FileSystem) ListDir(path string, hidden bool) (items []map[string]any, err error) {
 	var (
-		items   []map[string]any
 		absPath = u.getAbsPath(path)
+		info    os.FileInfo
 	)
 
 	entries, err := os.ReadDir(absPath)
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	info, err := os.Stat(absPath)
+	info, err = os.Stat(absPath)
 	if err != nil {
-		return nil, err
+		return
 	}
 	items = append(items, map[string]any{
 		"path":     "/",
@@ -238,18 +247,18 @@ func (u *FileSystem) ListDir(path string, hidden bool) ([]map[string]any, error)
 		if !hidden && strings.HasPrefix(entry.Name(), ".") {
 			continue
 		}
-		if hidden && strings.HasSuffix(entry.Name(), utils.GetEnv("GMI_FILE_META_SUFFIX", ".meta")) {
+		if hidden && strings.HasSuffix(entry.Name(), utils.GetEnv("FILE_META_SUFFIX", ".meta")) {
 			continue
 		}
-		info, err := entry.Info()
+		info, err = entry.Info()
 		if err != nil {
-			return nil, err
+			return
 		}
 		md5 := ""
 		if !info.IsDir() {
 			md5, err = u.MD5(path, entry.Name())
 			if err != nil {
-				return nil, err
+				return
 			}
 		}
 		items = append(items, map[string]any{
@@ -262,7 +271,18 @@ func (u *FileSystem) ListDir(path string, hidden bool) ([]map[string]any, error)
 		})
 	}
 
-	return items, nil
+	return
+}
+
+func (u *FileSystem) CreateDir(path string, mode os.FileMode) error {
+	absPath := u.getAbsPath(path)
+	if mode == 0 {
+		mode = u.config.FileUploader.PathMode
+	}
+	if err := os.MkdirAll(absPath, mode); err != nil {
+		return err
+	}
+	return os.Chmod(absPath, mode)
 }
 
 func (u *FileSystem) MD5(path, filename string) (string, error) {
@@ -377,7 +397,7 @@ func (u *FileSystem) setFileMeta(absPath, fileName string, meta *FileMeta) error
 func (u *FileSystem) getMetaPath(absPath, fileName string) string {
 	fileName = strings.TrimPrefix(fileName, "/")
 	fileName = strings.TrimPrefix(fileName, ".")
-	return filepath.Join(absPath, fmt.Sprintf(".%s%s", fileName, utils.GetEnv("GMI_FILE_META_SUFFIX", ".meta")))
+	return filepath.Join(absPath, fmt.Sprintf(".%s%s", fileName, utils.GetEnv("FILE_META_SUFFIX", ".meta")))
 }
 
 func (u *FileSystem) getAbsPath(path string) string {

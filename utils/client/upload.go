@@ -24,7 +24,7 @@ type UploadConfig struct {
 func DefaultUploadConfig() *UploadConfig {
 	return &UploadConfig{
 		ChunkSize:         1024 * 1024 * 10,
-		GenerateUploadUrl: utils.GetEnv("GMI_FILE_UPLOAD_URL", "/api/v1/upload"),
+		GenerateUploadUrl: utils.GetEnv("FILE_UPLOAD_URL", "/api/v1/upload"),
 	}
 }
 
