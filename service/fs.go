@@ -203,12 +203,16 @@ func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, overwrite
 	if totalSize > u.config.FileUploader.FileMaxSize {
 		return 0, fmt.Errorf("file size exceeds the maximum limit: %d > %d", totalSize, u.config.FileUploader.FileMaxSize)
 	}
+	start, err := strconv.ParseInt(contentRangeMap["start"], 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("parse start position failed: %v", err)
+	}
 
 	if mode == 0 {
 		mode = u.config.FileUploader.PathMode // Default file permissions
 	}
 	// upload file
-	md5, uploadSize, err := u.uploadOSFile(c, absPath, filename, mode, totalSize)
+	md5, uploadSize, err := u.uploadOSFile(c, absPath, filename, mode, start, totalSize)
 	meta.MD5 = md5
 	meta.Status = "incomplete"
 	if err == nil {
@@ -292,11 +296,16 @@ func (u *FileSystem) MD5(path, filename string) (string, error) {
 	return meta.MD5, nil
 }
 
-func (u *FileSystem) uploadOSFile(c *gin.Context, absPath, filename string, mode os.FileMode, totalSize int64) (string, int64, error) {
+func (u *FileSystem) uploadOSFile(c *gin.Context, absPath, filename string, mode os.FileMode, start, totalSize int64) (string, int64, error) {
 	tempFilePath := utils.GetTempFilePath(absPath, filename)
 	info, _ := os.Stat(tempFilePath)
-	if info != nil && info.Size() > totalSize {
-		return "", info.Size(), fmt.Errorf("file size is greater than the total size: %d > %d", info.Size(), totalSize)
+	if info != nil {
+		if info.Size() > totalSize {
+			return "", info.Size(), fmt.Errorf("file size is greater than the total size: %d > %d", info.Size(), totalSize)
+		}
+		if info.Size() > start {
+			return "md5", info.Size(), ErrFileUploadIncomplete
+		}
 	}
 	tmpFile, err := os.OpenFile(tempFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, mode)
 	if err != nil {
