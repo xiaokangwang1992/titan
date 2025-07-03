@@ -54,7 +54,7 @@ func DefaultFileSystemConfig() *config.FileSystem {
 
 type FileMeta struct {
 	MD5     string `json:"md5"`
-	Status  string `json:"status"`
+	Status  string `json:"status"` // uploading, completed, incomplete, overwrite, unknown
 	Expired int64  `json:"expired"`
 	Type    string `json:"type"`
 }
@@ -75,7 +75,7 @@ func NewFileSystem(ctx context.Context, baseDir string, config *config.FileSyste
 	}
 }
 
-func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string, pathParams []string) (string, error) {
+func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string, overwrite bool, pathParams []string) (string, error) {
 	var (
 		meta    *FileMeta
 		err     error
@@ -99,6 +99,9 @@ func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string, pathP
 			Status:  "incomplete",
 			Expired: time.Now().Unix() + u.config.FileUploader.ExpireTime,
 		}
+	}
+	if overwrite {
+		meta.Status = "overwrite"
 	}
 	u.logger.Infof("generate meta: %v", meta)
 	if err := u.setFileMeta(absPath, filename, meta); err != nil {
@@ -148,6 +151,11 @@ func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, mode os.F
 	if meta, err = u.getFileMeta(absPath, filename); err != nil {
 		return 0, ErrMetaFileNotFound
 	}
+	if meta.Status == "overwrite" {
+		os.Remove(filepath.Join(absPath, filename))
+		os.Remove(utils.GetTempFilePath(absPath, filename))
+		meta.Status = "incomplete"
+	}
 	if meta.Status == "uploading" {
 		return 0, ErrFileUploading
 	}
@@ -183,6 +191,7 @@ func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, mode os.F
 	if err != nil {
 		return 0, fmt.Errorf("extract content range failed: %v", err)
 	}
+	u.logger.Infof("content range: %v", contentRangeMap)
 	totalSize, err := strconv.ParseInt(contentRangeMap["total"], 10, 64)
 	if err != nil {
 		return 0, fmt.Errorf("parse total size failed: %v", err)
@@ -195,13 +204,13 @@ func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, mode os.F
 		mode = u.config.FileUploader.PathMode // Default file permissions
 	}
 	// upload file
-	md5, totalSize, err := u.uploadOSFile(c, absPath, filename, mode, totalSize)
+	md5, uploadSize, err := u.uploadOSFile(c, absPath, filename, mode, totalSize)
 	meta.MD5 = md5
 	meta.Status = "incomplete"
 	if err == nil {
 		meta.Status = "completed"
 	}
-	return totalSize, err
+	return uploadSize, err
 }
 
 func (u *FileSystem) ListDir(path string, hidden bool) ([]map[string]any, error) {
@@ -270,11 +279,8 @@ func (u *FileSystem) MD5(path, filename string) (string, error) {
 
 func (u *FileSystem) uploadOSFile(c *gin.Context, absPath, filename string, mode os.FileMode, totalSize int64) (string, int64, error) {
 	tempFilePath := utils.GetTempFilePath(absPath, filename)
-	info, err := os.Stat(tempFilePath)
-	if err != nil {
-		return "", info.Size(), err
-	}
-	if info.Size() > totalSize {
+	info, _ := os.Stat(tempFilePath)
+	if info != nil && info.Size() > totalSize {
 		return "", info.Size(), fmt.Errorf("file size is greater than the total size: %d > %d", info.Size(), totalSize)
 	}
 	tmpFile, err := os.OpenFile(tempFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, mode)
@@ -326,18 +332,20 @@ mainloop:
 			}
 		}
 	}
+	md5 := fmt.Sprintf("%x", hasher.Sum(nil))
 	if err != nil && err != io.EOF {
-		return "", 0, err
+		return md5, 0, err
 	}
-	info, _ = os.Stat(tempFilePath)
+	info, err = os.Stat(tempFilePath)
 	if err != nil {
-		return "", info.Size(), err
+		return md5, info.Size(), err
 	}
+	u.logger.Infof("file %s upload size: %d, total size: %d", filename, info.Size(), totalSize)
 	if info.Size() < totalSize {
-		return "", totalSize, ErrFileUploadIncomplete
+		return md5, info.Size(), ErrFileUploadIncomplete
 	}
 	os.Rename(tempFilePath, filepath.Join(absPath, filename))
-	return fmt.Sprintf("%x", hasher.Sum(nil)), totalSize, nil
+	return md5, info.Size(), nil
 }
 
 func (u *FileSystem) getFileMeta(absPath, fileName string) (*FileMeta, error) {
