@@ -10,7 +10,6 @@ package service
 
 import (
 	"context"
-	"crypto/md5"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -310,8 +309,7 @@ func (u *FileSystem) uploadOSFile(c *gin.Context, absPath, filename string, mode
 		buffer     = make([]byte, u.config.FileUploader.BufferSize)
 		n          int
 		uploadMB   int64
-		hasher     = md5.New()
-		md5Writer  = io.MultiWriter(tmpFile, hasher)
+		md5        string
 	)
 mainloop:
 	for {
@@ -327,7 +325,7 @@ mainloop:
 		default:
 			n, err = c.Request.Body.Read(buffer)
 			if n > 0 {
-				written, writeErr := md5Writer.Write(buffer[:n])
+				written, writeErr := tmpFile.Write(buffer[:n])
 				if writeErr != nil {
 					err = fmt.Errorf("write file failed: %v", writeErr)
 					break mainloop
@@ -348,7 +346,6 @@ mainloop:
 			}
 		}
 	}
-	md5 := fmt.Sprintf("%x", hasher.Sum(nil))
 	if err != nil && err != io.EOF {
 		return md5, 0, err
 	}
@@ -361,7 +358,8 @@ mainloop:
 		return md5, info.Size(), ErrFileUploadIncomplete
 	}
 	os.Rename(tempFilePath, filepath.Join(absPath, filename))
-	return md5, info.Size(), nil
+	md5, err = utils.CalFileMD5(filepath.Join(absPath, filename))
+	return md5, info.Size(), err
 }
 
 func (u *FileSystem) getFileMeta(absPath, fileName string) (*FileMeta, error) {

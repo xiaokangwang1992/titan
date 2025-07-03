@@ -10,6 +10,7 @@ package utils
 
 import (
 	"archive/zip"
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -308,4 +309,15 @@ func Zip(source, target string) error {
 
 func GetTempFilePath(path, filename string) string {
 	return filepath.Join(path, "."+filename+GetEnv("TEMP_FILE_SUFFIX", ".tmp"))
+}
+
+func CalFileMD5(path string) (string, error) {
+	hasher := md5.New()
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	io.Copy(hasher, file)
+	return fmt.Sprintf("%x", hasher.Sum(nil)), nil
 }
