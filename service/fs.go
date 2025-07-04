@@ -26,6 +26,7 @@ import (
 	"github.com/piaobeizu/titan/config"
 	"github.com/piaobeizu/titan/utils"
 	"github.com/piaobeizu/titan/utils/cipher"
+	"github.com/piaobeizu/titan/vars"
 	"github.com/sirupsen/logrus"
 )
 
@@ -403,8 +404,8 @@ func (u *FileSystem) setFileMeta(absPath, fileName string, meta *FileMeta) error
 func (u *FileSystem) getMetaPath(absPath, fileName string) string {
 	fileName = strings.TrimPrefix(fileName, "/")
 	fileName = strings.TrimPrefix(fileName, ".")
-	fileName = strings.TrimSuffix(fileName, utils.FileTempSuffix)
-	return filepath.Join(absPath, fmt.Sprintf(".%s%s", fileName, utils.FileMetaSuffix))
+	fileName = strings.TrimSuffix(fileName, vars.FileTempSuffix)
+	return filepath.Join(absPath, fmt.Sprintf(".%s%s", fileName, vars.FileMetaSuffix))
 }
 
 func (u *FileSystem) getAbsPath(path string) string {

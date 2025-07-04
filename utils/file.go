@@ -20,12 +20,8 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/piaobeizu/titan/vars"
 	"gopkg.in/yaml.v2"
-)
-
-var (
-	FileMetaSuffix = GetEnv("FILE_META_SUFFIX", ".meta")
-	FileTempSuffix = GetEnv("FILE_TEMP_SUFFIX", ".tmp")
 )
 
 func IsExists(filename string) bool {
@@ -313,7 +309,7 @@ func Zip(source, target string) error {
 }
 
 func GetTempFilePath(path, filename string) string {
-	return filepath.Join(path, "."+filename+FileTempSuffix)
+	return filepath.Join(path, "."+filename+vars.FileTempSuffix)
 }
 
 func CalFileMD5(path string) (string, error) {
