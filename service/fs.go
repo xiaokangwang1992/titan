@@ -250,7 +250,7 @@ func (u *FileSystem) ListDir(path string, hidden bool) (items []map[string]any, 
 		if !hidden && strings.HasPrefix(entry.Name(), ".") {
 			continue
 		}
-		if hidden && strings.HasSuffix(entry.Name(), utils.GetEnv("FILE_META_SUFFIX", ".meta")) {
+		if hidden && strings.HasSuffix(entry.Name(), vars.FileMetaSuffix) {
 			continue
 		}
 		info, err = entry.Info()
