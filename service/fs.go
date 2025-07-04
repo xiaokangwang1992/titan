@@ -403,7 +403,8 @@ func (u *FileSystem) setFileMeta(absPath, fileName string, meta *FileMeta) error
 func (u *FileSystem) getMetaPath(absPath, fileName string) string {
 	fileName = strings.TrimPrefix(fileName, "/")
 	fileName = strings.TrimPrefix(fileName, ".")
-	return filepath.Join(absPath, fmt.Sprintf(".%s%s", fileName, utils.GetEnv("FILE_META_SUFFIX", ".meta")))
+	fileName = strings.TrimSuffix(fileName, utils.FileTempSuffix)
+	return filepath.Join(absPath, fmt.Sprintf(".%s%s", fileName, utils.FileMetaSuffix))
 }
 
 func (u *FileSystem) getAbsPath(path string) string {

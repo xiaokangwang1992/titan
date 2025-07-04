@@ -17,14 +17,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/piaobeizu/titan/types"
+	"github.com/piaobeizu/titan/config"
 	"github.com/sirupsen/logrus"
 )
 
 type ApiServer struct {
 	ctx         context.Context
 	srv         *http.Server
-	routes      map[string]types.ApiGroup
+	routes      map[string]config.ApiGroup
 	apiAddr     string
 	version     string
 	middlewares map[string]map[string]any
@@ -39,7 +39,7 @@ type ApiServer struct {
 func NewApiServer(ctx context.Context, addr, version string, log *logrus.Entry) *ApiServer {
 	return &ApiServer{
 		ctx:         ctx,
-		routes:      make(map[string]types.ApiGroup),
+		routes:      make(map[string]config.ApiGroup),
 		apiAddr:     addr,
 		middlewares: make(map[string]map[string]any),
 		version:     version,
@@ -48,7 +48,7 @@ func NewApiServer(ctx context.Context, addr, version string, log *logrus.Entry) 
 }
 
 func (s *ApiServer) AddRoutes(group string, middlewares, routes, sses, websockets []string) {
-	s.routes[group] = types.ApiGroup{
+	s.routes[group] = config.ApiGroup{
 		Middlewares: middlewares,
 		Routers:     routes,
 		Sses:        sses,

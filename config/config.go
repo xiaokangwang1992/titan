@@ -29,7 +29,7 @@ type ApiGroup struct {
 	Middlewares []string `yaml:"middlewares" default:"DefaultMiddleware"`
 	Routers     []string `yaml:"routers,omitempty"`
 	Sses        []string `yaml:"sses,omitempty"`
-	Websockets  []string `yaml:"websockets,omitempty"`
+	WebSockets  []string `yaml:"websockets,omitempty"`
 }
 
 type WebGroup struct {

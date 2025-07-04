@@ -8,130 +8,124 @@
 
 package types
 
-import (
-	"os"
+// type Mysql struct {
+// 	MysqlHost string `yaml:"host" default:""`
+// 	MysqlPort uint32 `yaml:"port" default:""`
+// 	MysqlUser string `yaml:"user" default:""`
+// 	MysqlPass string `yaml:"password" default:""`
+// 	MysqlDB   string `yaml:"db" default:""`
+// }
 
-	"github.com/piaobeizu/titan/utils"
-)
+// type Redis struct {
+// 	RedisHost     string `yaml:"host"`
+// 	RedisPort     uint32 `yaml:"port" default:"6379"`
+// 	RedisUser     string `yaml:"user"`
+// 	RedisPassword string `yaml:"password"`
+// 	RedisDB       int    `yaml:"db" default:"0"`
+// }
 
-type Mysql struct {
-	MysqlHost string `yaml:"host" default:""`
-	MysqlPort uint32 `yaml:"port" default:""`
-	MysqlUser string `yaml:"user" default:""`
-	MysqlPass string `yaml:"password" default:""`
-	MysqlDB   string `yaml:"db" default:""`
-}
+// type Route struct {
+// 	Uri     string `yaml:"uri,omitempty"`
+// 	Method  string `yaml:"method,omitempty"`
+// 	Handler string `yaml:"handler,omitempty"`
+// }
+// type Middleware struct {
+// 	Name string         `yaml:"name,omitempty"`
+// 	Args map[string]any `yaml:"args,omitempty"`
+// }
 
-type Redis struct {
-	RedisHost     string `yaml:"host"`
-	RedisPort     uint32 `yaml:"port" default:"6379"`
-	RedisUser     string `yaml:"user"`
-	RedisPassword string `yaml:"password"`
-	RedisDB       int    `yaml:"db" default:"0"`
-}
+// type ApiGroup struct {
+// 	Middlewares []string `yaml:"middlewares" default:"DefaultMiddleware"`
+// 	Routers     []string `yaml:"routers,omitempty"`
+// 	Sses        []string `yaml:"sses,omitempty"`
+// 	WebSockets  []string `yaml:"websockets,omitempty"`
+// }
 
-type Route struct {
-	Uri     string `yaml:"uri,omitempty"`
-	Method  string `yaml:"method,omitempty"`
-	Handler string `yaml:"handler,omitempty"`
-}
-type Middleware struct {
-	Name string         `yaml:"name,omitempty"`
-	Args map[string]any `yaml:"args,omitempty"`
-}
+// type WebGroup struct {
+// 	Uri  string `yaml:"uri,omitempty"`
+// 	Page string `yaml:"page,omitempty"`
+// }
 
-type ApiGroup struct {
-	Middlewares []string `yaml:"middlewares" default:"DefaultMiddleware"`
-	Routers     []string `yaml:"routers,omitempty"`
-	Sses        []string `yaml:"sses,omitempty"`
-	WebSockets  []string `yaml:"websockets,omitempty"`
-}
+// type Http struct {
+// 	Version     string                    `yaml:"version,omitempty"`
+// 	ApiAddr     string                    `yaml:"api-addr,omitempty"`
+// 	Route       string                    `yaml:"route,omitempty"`
+// 	Routes      map[string]ApiGroup       `yaml:"routes,omitempty"`
+// 	Swagger     bool                      `yaml:"swagger,omitempty"`
+// 	Middlewares map[string]map[string]any `yaml:"middlewares,omitempty"`
+// 	WebAddr     string                    `yaml:"web-addr,omitempty"`
+// }
 
-type WebGroup struct {
-	Uri  string `yaml:"uri,omitempty"`
-	Page string `yaml:"page,omitempty"`
-}
+// type Grpc struct {
+// 	ListenAddr string `yaml:"listen-addr,omitempty"`
+// }
 
-type Http struct {
-	Version     string                    `yaml:"version,omitempty"`
-	ApiAddr     string                    `yaml:"api-addr,omitempty"`
-	Route       string                    `yaml:"route,omitempty"`
-	Routes      map[string]ApiGroup       `yaml:"routes,omitempty"`
-	Swagger     bool                      `yaml:"swagger,omitempty"`
-	Middlewares map[string]map[string]any `yaml:"middlewares,omitempty"`
-	WebAddr     string                    `yaml:"web-addr,omitempty"`
-}
+// type Scheduler struct {
+// 	Enabled bool                   `yaml:"enabled,omitempty"`
+// 	Name    string                 `yaml:"name,omitempty"`
+// 	Cron    string                 `yaml:"cron,omitempty"`
+// 	Detail  string                 `yaml:"detail,omitempty"`
+// 	Method  string                 `yaml:"method,omitempty"`
+// 	Args    map[string]interface{} `yaml:"args,omitempty"`
+// }
 
-type Grpc struct {
-	ListenAddr string `yaml:"listen-addr,omitempty"`
-}
+// type Ants struct {
+// 	Size int `yaml:"size" default:"100"`
+// }
 
-type Scheduler struct {
-	Enabled bool                   `yaml:"enabled,omitempty"`
-	Name    string                 `yaml:"name,omitempty"`
-	Cron    string                 `yaml:"cron,omitempty"`
-	Detail  string                 `yaml:"detail,omitempty"`
-	Method  string                 `yaml:"method,omitempty"`
-	Args    map[string]interface{} `yaml:"args,omitempty"`
-}
+// type Config struct {
+// 	Mode       string      `yaml:"mode" default:"debug"`
+// 	Name       string      `yaml:"name" default:""`
+// 	LogMode    string      `yaml:"log-mode" default:"debug"`
+// 	Http       *Http       `yaml:"http,omitempty"`
+// 	Grpc       *Grpc       `yaml:"grpc,omitempty"`
+// 	Mysql      string      `yaml:"mysql,omitempty"`
+// 	Redis      string      `yaml:"redis,omitempty"`
+// 	Oss        string      `yaml:"oss,omitempty"`
+// 	Schedulers []Scheduler `yaml:"schedulers,omitempty"`
+// 	Business   any         `yaml:"business,omitempty"`
+// 	Ants       *Ants       `yaml:"ants,omitempty"`
+// }
 
-type Ants struct {
-	Size int `yaml:"size" default:"100"`
-}
+// var (
+// 	cfg    Config
+// 	routes map[string]ApiGroup
+// )
 
-type Config struct {
-	Mode       string      `yaml:"mode" default:"debug"`
-	Name       string      `yaml:"name" default:""`
-	LogMode    string      `yaml:"log-mode" default:"debug"`
-	Http       *Http       `yaml:"http,omitempty"`
-	Grpc       *Grpc       `yaml:"grpc,omitempty"`
-	Mysql      string      `yaml:"mysql,omitempty"`
-	Redis      string      `yaml:"redis,omitempty"`
-	Oss        string      `yaml:"oss,omitempty"`
-	Schedulers []Scheduler `yaml:"schedulers,omitempty"`
-	Business   any         `yaml:"business,omitempty"`
-	Ants       *Ants       `yaml:"ants,omitempty"`
-}
+// func getConfig() (Config, error) {
+// 	var ret Config
+// 	f := os.Getenv("APP_CONFIG_PATH")
+// 	err := utils.ReadFileToStruct(f, &ret, "yaml", false)
+// 	return ret, err
+// }
 
-var (
-	cfg    Config
-	routes map[string]ApiGroup
-)
+// func getRoutes() (map[string]ApiGroup, error) {
+// 	var (
+// 		err error
+// 		ret = cfg.Http.Routes
+// 	)
+// 	if ret == nil {
+// 		err = utils.ReadFileToStruct(cfg.Http.Route, &ret, "yaml", false)
+// 	}
+// 	return ret, err
+// }
 
-func getConfig() (Config, error) {
-	var ret Config
-	f := os.Getenv("APP_CONFIG_PATH")
-	err := utils.ReadFileToStruct(f, &ret, "yaml", false)
-	return ret, err
-}
+// func InitCfg() (err error) {
+// 	cfg, err = getConfig()
+// 	if err != nil {
+// 		return
+// 	}
+// 	return initRoutes()
+// }
+// func initRoutes() (err error) {
+// 	routes, err = getRoutes()
+// 	return
+// }
 
-func getRoutes() (map[string]ApiGroup, error) {
-	var (
-		err error
-		ret = cfg.Http.Routes
-	)
-	if ret == nil {
-		err = utils.ReadFileToStruct(cfg.Http.Route, &ret, "yaml", false)
-	}
-	return ret, err
-}
+// func GetConfig() *Config {
+// 	return &cfg
+// }
 
-func InitCfg() (err error) {
-	cfg, err = getConfig()
-	if err != nil {
-		return
-	}
-	return initRoutes()
-}
-func initRoutes() (err error) {
-	routes, err = getRoutes()
-	return
-}
-
-func GetConfig() *Config {
-	return &cfg
-}
-
-func GetRoutes() map[string]ApiGroup {
-	return routes
-}
+// func GetRoutes() map[string]ApiGroup {
+// 	return routes
+// }
