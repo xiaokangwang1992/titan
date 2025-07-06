@@ -181,21 +181,24 @@ func GetEnv(key, value string) string {
 
 // inferType 自动推断字符串的数据类型
 func InferType(s string) any {
+	// 如果是空字符串，直接返回 nil 或者 0
+	if s == "" {
+		return nil // 或者返回 0，取决于你的需求
+	}
+
 	// 尝试解析为整数
 	if intVal, err := strconv.Atoi(s); err == nil {
 		return intVal
 	}
 
+	// 尝试解析为 64 位整数（处理大数字）
 	if int64Val, err := strconv.ParseInt(s, 10, 64); err == nil {
 		return int64Val
 	}
 
+	// 尝试解析为无符号 64 位整数
 	if uint64Val, err := strconv.ParseUint(s, 10, 64); err == nil {
 		return uint64Val
-	}
-
-	if uint32Val, err := strconv.ParseUint(s, 10, 32); err == nil {
-		return uint32Val
 	}
 
 	// 尝试解析为浮点数
