@@ -14,7 +14,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strconv"
 
 	nurl "net/url"
 	"os"
@@ -197,17 +196,11 @@ func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, overwrite
 		return 0, fmt.Errorf("extract content range failed: %v", err)
 	}
 	u.logger.Infof("content range: %v", contentRangeMap)
-	totalSize, err := strconv.ParseInt(contentRangeMap["total"], 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("parse total size failed: %v", err)
-	}
+	totalSize := contentRangeMap["total"].(int64)
 	if totalSize > u.config.FileUploader.FileMaxSize {
 		return 0, fmt.Errorf("file size exceeds the maximum limit: %d > %d", totalSize, u.config.FileUploader.FileMaxSize)
 	}
-	start, err := strconv.ParseInt(contentRangeMap["start"], 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("parse start position failed: %v", err)
-	}
+	start := contentRangeMap["start"].(int64)
 
 	if mode == 0 {
 		mode = u.config.FileUploader.PathMode // Default file permissions

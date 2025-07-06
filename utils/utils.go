@@ -186,6 +186,18 @@ func inferType(s string) any {
 		return intVal
 	}
 
+	if int64Val, err := strconv.ParseInt(s, 10, 64); err == nil {
+		return int64Val
+	}
+
+	if uint64Val, err := strconv.ParseUint(s, 10, 64); err == nil {
+		return uint64Val
+	}
+
+	if uint32Val, err := strconv.ParseUint(s, 10, 32); err == nil {
+		return uint32Val
+	}
+
 	// 尝试解析为浮点数
 	if floatVal, err := strconv.ParseFloat(s, 64); err == nil {
 		return floatVal
