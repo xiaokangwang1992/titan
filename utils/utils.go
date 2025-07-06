@@ -180,7 +180,7 @@ func GetEnv(key, value string) string {
 }
 
 // inferType 自动推断字符串的数据类型
-func inferType(s string) any {
+func InferType(s string) any {
 	// 尝试解析为整数
 	if intVal, err := strconv.Atoi(s); err == nil {
 		return intVal
@@ -236,40 +236,40 @@ func ExtractByRegex(pattern, text string) (map[string]any, error) {
 				key = fmt.Sprintf("group%d", i)
 			}
 			// 使用类型推断函数
-			result[key] = inferType(match[i])
+			result[key] = InferType(match[i])
 		}
 	}
 
 	return result, nil
 }
 
-// ExtractByRegexString 提取正则表达式匹配的结果，保持字符串类型（向后兼容）
-func ExtractByRegexString(pattern, text string) (map[string]string, error) {
-	re, err := regexp.Compile(pattern)
-	if err != nil {
-		return nil, fmt.Errorf("compile regex failed: %v", err)
-	}
+// // ExtractByRegexString 提取正则表达式匹配的结果，保持字符串类型（向后兼容）
+// func ExtractByRegexString(pattern, text string) (map[string]string, error) {
+// 	re, err := regexp.Compile(pattern)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("compile regex failed: %v", err)
+// 	}
 
-	match := re.FindStringSubmatch(text)
-	if match == nil {
-		return nil, nil
-	}
+// 	match := re.FindStringSubmatch(text)
+// 	if match == nil {
+// 		return nil, nil
+// 	}
 
-	result := make(map[string]string)
-	groupNames := re.SubexpNames()
+// 	result := make(map[string]string)
+// 	groupNames := re.SubexpNames()
 
-	for i, name := range groupNames {
-		if i != 0 {
-			if name != "" {
-				result[name] = match[i]
-			} else {
-				result[fmt.Sprintf("group%d", i)] = match[i]
-			}
-		}
-	}
+// 	for i, name := range groupNames {
+// 		if i != 0 {
+// 			if name != "" {
+// 				result[name] = match[i]
+// 			} else {
+// 				result[fmt.Sprintf("group%d", i)] = match[i]
+// 			}
+// 		}
+// 	}
 
-	return result, nil
-}
+// 	return result, nil
+// }
 
 func EqualURL(url1, url2 string, keyParams []string) (bool, error) {
 	u1, err := url.Parse(url1)
