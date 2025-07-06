@@ -16,6 +16,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -178,8 +179,60 @@ func GetEnv(key, value string) string {
 	return value
 }
 
-// ExtractByRegex 提取正则表达式匹配的结果
-func ExtractByRegex(pattern, text string) (map[string]string, error) {
+// inferType 自动推断字符串的数据类型
+func inferType(s string) any {
+	// 尝试解析为整数
+	if intVal, err := strconv.Atoi(s); err == nil {
+		return intVal
+	}
+
+	// 尝试解析为浮点数
+	if floatVal, err := strconv.ParseFloat(s, 64); err == nil {
+		return floatVal
+	}
+
+	// 尝试解析为布尔值
+	if boolVal, err := strconv.ParseBool(s); err == nil {
+		return boolVal
+	}
+
+	// 如果都无法解析，返回原始字符串
+	return s
+}
+
+// ExtractByRegex 提取正则表达式匹配的结果，自动推断数据类型
+func ExtractByRegex(pattern, text string) (map[string]any, error) {
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("compile regex failed: %v", err)
+	}
+
+	match := re.FindStringSubmatch(text)
+	if match == nil {
+		return nil, nil
+	}
+
+	result := make(map[string]any)
+	groupNames := re.SubexpNames()
+
+	for i, name := range groupNames {
+		if i != 0 {
+			var key string
+			if name != "" {
+				key = name
+			} else {
+				key = fmt.Sprintf("group%d", i)
+			}
+			// 使用类型推断函数
+			result[key] = inferType(match[i])
+		}
+	}
+
+	return result, nil
+}
+
+// ExtractByRegexString 提取正则表达式匹配的结果，保持字符串类型（向后兼容）
+func ExtractByRegexString(pattern, text string) (map[string]string, error) {
 	re, err := regexp.Compile(pattern)
 	if err != nil {
 		return nil, fmt.Errorf("compile regex failed: %v", err)
