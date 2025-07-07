@@ -208,7 +208,7 @@ func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, overwrite
 	// check content range
 	contentRange := c.GetHeader("Content-Range")
 	contentRangeMap, err := utils.ExtractByRegex(`^bytes (?P<start>\d+)-(?P<end>\d+)/(?P<total>\d+)$`, contentRange)
-	if err != nil {
+	if err != nil || contentRangeMap == nil {
 		return 0, fmt.Errorf("extract content range failed: %v", err)
 	}
 	u.logger.Infof("content range: %v", contentRangeMap)
