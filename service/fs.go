@@ -216,7 +216,7 @@ func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, overwrite
 	if totalSize > u.config.FileUploader.FileMaxSize {
 		return 0, fmt.Errorf("file size exceeds the maximum limit: %d > %d", totalSize, u.config.FileUploader.FileMaxSize)
 	}
-	start := contentRangeMap["start"].(int64)
+	start := int64(contentRangeMap["start"].(int))
 
 	if mode == 0 {
 		mode = u.config.FileUploader.PathMode // Default file permissions
