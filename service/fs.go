@@ -74,6 +74,12 @@ type FileSystem struct {
 	baseDir string
 }
 
+type PathParams struct {
+	Show  bool
+	Key   string
+	Value string
+}
+
 func NewFileSystem(ctx context.Context, baseDir string, config *config.FileSystem) *FileSystem {
 	return &FileSystem{
 		ctx:     ctx,
@@ -83,22 +89,32 @@ func NewFileSystem(ctx context.Context, baseDir string, config *config.FileSyste
 	}
 }
 
-func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string, pathParams []string) (string, error) {
+func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string, pathParams []PathParams) (string, error) {
 	var (
-		meta    *FileMeta
-		err     error
-		absPath = u.getAbsPath(path)
+		meta       *FileMeta
+		err        error
+		absPath    = u.getAbsPath(path)
+		showParams = []string{}
 	)
-	pathParams = append(pathParams, []string{
+	for _, param := range pathParams {
+		if param.Show {
+			showParams = append(showParams, fmt.Sprintf("%s=%s", param.Key, param.Value))
+		}
+	}
+	showParams = append(showParams, []string{
 		fmt.Sprintf("file=%s", filename),
 		fmt.Sprintf("path=%s", path),
 	}...)
-	secret, err = cipher.EncryptCompact([]byte(strings.Join(pathParams, "&")), secret)
+	secret, err = cipher.EncryptCompact([]byte(strings.Join(showParams, "&")), secret)
 	if err != nil {
 		return "", err
 	}
-	pathParams = append(pathParams, fmt.Sprintf("secret=%s", secret))
-
+	showParams = append(showParams, fmt.Sprintf("secret=%s", secret))
+	for _, param := range pathParams {
+		if !param.Show {
+			showParams = append(showParams, fmt.Sprintf("%s=%s", param.Key, param.Value))
+		}
+	}
 	if meta, err = u.getFileMeta(absPath, filename); err == nil {
 		meta.Expired = time.Now().Unix() + u.config.FileUploader.ExpireTime
 	} else {
@@ -112,8 +128,8 @@ func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string, pathP
 	if err := u.setFileMeta(absPath, filename, meta); err != nil {
 		return "", err
 	}
-	u.logger.Infof("generate upload url: %s?%s", url, strings.Join(pathParams, "&"))
-	return fmt.Sprintf("%s?%s", url, strings.Join(pathParams, "&")), nil
+	u.logger.Infof("generate upload url: %s?%s", url, strings.Join(showParams, "&"))
+	return fmt.Sprintf("%s?%s", url, strings.Join(showParams, "&")), nil
 }
 
 func (u *FileSystem) CheckUrl(urlObj *nurl.URL, secret string, keyParams []string) error {
