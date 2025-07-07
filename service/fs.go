@@ -97,9 +97,7 @@ func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string, pathP
 		showParams = []string{}
 	)
 	for _, param := range pathParams {
-		if param.Show {
-			showParams = append(showParams, fmt.Sprintf("%s=%s", param.Key, param.Value))
-		}
+		showParams = append(showParams, fmt.Sprintf("%s=%s", param.Key, param.Value))
 	}
 	showParams = append(showParams, []string{
 		fmt.Sprintf("file=%s", filename),
@@ -109,12 +107,15 @@ func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string, pathP
 	if err != nil {
 		return "", err
 	}
-	showParams = append(showParams, fmt.Sprintf("secret=%s", secret))
+
+	showParams = []string{fmt.Sprintf("secret=%s", secret), fmt.Sprintf("file=%s", filename), fmt.Sprintf("path=%s", path)}
 	for _, param := range pathParams {
-		if !param.Show {
+		if param.Show {
 			showParams = append(showParams, fmt.Sprintf("%s=%s", param.Key, param.Value))
 		}
 	}
+	u.logger.Infof("generate upload url: %s?%s", url, strings.Join(showParams, "&"))
+
 	if meta, err = u.getFileMeta(absPath, filename); err == nil {
 		meta.Expired = time.Now().Unix() + u.config.FileUploader.ExpireTime
 	} else {
@@ -128,7 +129,6 @@ func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string, pathP
 	if err := u.setFileMeta(absPath, filename, meta); err != nil {
 		return "", err
 	}
-	u.logger.Infof("generate upload url: %s?%s", url, strings.Join(showParams, "&"))
 	return fmt.Sprintf("%s?%s", url, strings.Join(showParams, "&")), nil
 }
 
