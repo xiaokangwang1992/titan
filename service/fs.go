@@ -212,7 +212,7 @@ func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, overwrite
 		return 0, fmt.Errorf("extract content range failed: %v", err)
 	}
 	u.logger.Infof("content range: %v", contentRangeMap)
-	totalSize := contentRangeMap["total"].(int64)
+	totalSize := int64(contentRangeMap["total"].(int))
 	if totalSize > u.config.FileUploader.FileMaxSize {
 		return 0, fmt.Errorf("file size exceeds the maximum limit: %d > %d", totalSize, u.config.FileUploader.FileMaxSize)
 	}
