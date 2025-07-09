@@ -437,7 +437,7 @@ func (c *WSClient) writeLoop() {
 					c.emitEvent(Event{
 						Type:      EventError,
 						Error:     err,
-						Timestamp: time.Now(),
+						Timestamp: time.Now().UTC(),
 					})
 				}
 			case WSMSG_TYPE_BINARY:
@@ -447,7 +447,7 @@ func (c *WSClient) writeLoop() {
 					c.emitEvent(Event{
 						Type:      EventError,
 						Error:     err,
-						Timestamp: time.Now(),
+						Timestamp: time.Now().UTC(),
 					})
 				}
 			case WSMSG_TYPE_JSON:
@@ -457,7 +457,7 @@ func (c *WSClient) writeLoop() {
 					c.emitEvent(Event{
 						Type:      EventError,
 						Error:     err,
-						Timestamp: time.Now(),
+						Timestamp: time.Now().UTC(),
 					})
 				}
 			}
