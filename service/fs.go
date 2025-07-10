@@ -305,6 +305,7 @@ func (u *FileSystem) AddFileTypes(types []string) {
 		u.config.FileUploader.FileTypes = []string{}
 	}
 	u.config.FileUploader.FileTypes = append(u.config.FileUploader.FileTypes, types...)
+	u.config.FileUploader.FileTypes = utils.RemoveDuplicatesAndEmpty(u.config.FileUploader.FileTypes)
 }
 
 func (u *FileSystem) DeletePath(path string) error {
@@ -314,7 +315,7 @@ func (u *FileSystem) DeletePath(path string) error {
 		return err
 	}
 	if !info.IsDir() {
-		metaFile := u.getMetaPath(absPath, info.Name())
+		metaFile := u.getMetaPath(filepath.Base(absPath), info.Name())
 		if err := os.Remove(metaFile); err != nil {
 			return err
 		}
