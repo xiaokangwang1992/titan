@@ -297,6 +297,29 @@ func (u *FileSystem) CreateDir(path string, mode os.FileMode) error {
 	return os.Chmod(absPath, mode)
 }
 
+func (u *FileSystem) AddFileTypes(types []string) {
+	if len(types) == 0 || u.config.FileUploader == nil {
+		return
+	}
+	if u.config.FileUploader.FileTypes == nil {
+		u.config.FileUploader.FileTypes = []string{}
+	}
+	u.config.FileUploader.FileTypes = append(u.config.FileUploader.FileTypes, types...)
+}
+
+func (u *FileSystem) DeletePath(path, filename string) error {
+	absPath := u.getAbsPath(path)
+	if filename == "" {
+		return os.RemoveAll(absPath)
+	}
+	metaFile := u.getMetaPath(absPath, filename)
+	if err := os.Remove(metaFile); err != nil {
+		return err
+	}
+	os.Remove(filepath.Join(absPath, filename))
+	return nil
+}
+
 func (u *FileSystem) MD5(path, filename string) (string, error) {
 	absPath := u.getAbsPath(path)
 	meta, err := u.getFileMeta(absPath, filename)
