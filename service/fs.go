@@ -315,7 +315,7 @@ func (u *FileSystem) DeletePath(path string) error {
 		return err
 	}
 	if !info.IsDir() {
-		metaFile := u.getMetaPath(filepath.Base(absPath), info.Name())
+		metaFile := u.getMetaPath(filepath.Dir(absPath), info.Name())
 		if err := os.Remove(metaFile); err != nil {
 			return err
 		}
