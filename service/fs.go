@@ -316,8 +316,7 @@ func (u *FileSystem) DeletePath(path, filename string) error {
 	if err := os.Remove(metaFile); err != nil {
 		return err
 	}
-	os.Remove(filepath.Join(absPath, filename))
-	return nil
+	return os.Remove(filepath.Join(absPath, filename))
 }
 
 func (u *FileSystem) MD5(path, filename string) (string, error) {
