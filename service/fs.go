@@ -307,16 +307,20 @@ func (u *FileSystem) AddFileTypes(types []string) {
 	u.config.FileUploader.FileTypes = append(u.config.FileUploader.FileTypes, types...)
 }
 
-func (u *FileSystem) DeletePath(path, filename string) error {
+func (u *FileSystem) DeletePath(path string) error {
 	absPath := u.getAbsPath(path)
-	if filename == "" {
-		return os.RemoveAll(absPath)
-	}
-	metaFile := u.getMetaPath(absPath, filename)
-	if err := os.Remove(metaFile); err != nil {
+	info, err := os.Stat(absPath)
+	if err != nil {
 		return err
 	}
-	return os.Remove(filepath.Join(absPath, filename))
+	if !info.IsDir() {
+		metaFile := u.getMetaPath(absPath, info.Name())
+		if err := os.Remove(metaFile); err != nil {
+			return err
+		}
+		return os.Remove(absPath)
+	}
+	return os.RemoveAll(absPath)
 }
 
 func (u *FileSystem) MD5(path, filename string) (string, error) {
