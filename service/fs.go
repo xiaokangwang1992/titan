@@ -446,6 +446,6 @@ func (u *FileSystem) getMetaPath(absPath, fileName string) string {
 
 func (u *FileSystem) getAbsPath(path string) string {
 	path = strings.TrimPrefix(path, "/")
-	path = strings.TrimPrefix(path, ".")
+	// path = strings.TrimPrefix(path, ".")
 	return filepath.Join(u.baseDir, path)
 }
