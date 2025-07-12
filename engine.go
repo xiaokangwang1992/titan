@@ -10,13 +10,22 @@ package titan
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"reflect"
+	"runtime/debug"
 	"syscall"
+	"time"
 
-	"github.com/piaobeizu/titan/log"
-	"github.com/piaobeizu/titan/service"
+	"github.com/panjf2000/ants/v2"
+	"github.com/piaobeizu/titan/config"
+	"github.com/piaobeizu/titan/pkg/cron"
+	"github.com/piaobeizu/titan/pkg/event"
+	"github.com/piaobeizu/titan/pkg/log"
+	"github.com/piaobeizu/titan/pkg/plugin"
+	"github.com/piaobeizu/titan/pkg/service"
+	"github.com/piaobeizu/titan/pkg/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,25 +33,50 @@ type Titan struct {
 	app       string
 	ctx       context.Context
 	api       *service.ApiServer
-	scheduler *service.Scheduler
+	scheduler *cron.Scheduler
+	event     *event.Event
+	pool      *ants.Pool
+	plugins   *plugin.Plugins
+	stop      chan struct{}
 	singal    chan os.Signal
 	log       *logrus.Entry
 }
 
+func (t *Titan) handlepanic(i any) {
+	file, line := utils.FindCaller(5)
+	logrus.WithFields(logrus.Fields{
+		"panic": fmt.Sprintf("%s:%d", file, line),
+	}).Errorf("%v\n%s", i, string(debug.Stack()))
+	t.Stop()
+}
+
 func NewTitan(ctx context.Context, app, logMode string) *Titan {
 	log.InitLog(app, logMode)
-	e := &Titan{
+	t := &Titan{
 		app:    app,
 		ctx:    ctx,
 		singal: make(chan os.Signal, 1),
 		log:    logrus.WithField("app", app),
 	}
-	signal.Notify(e.singal, syscall.SIGTERM)
-	signal.Notify(e.singal, syscall.SIGINT)
-	signal.Notify(e.singal, syscall.SIGQUIT)
-	signal.Notify(e.singal, syscall.SIGHUP)
-	e.log.Infof("welcome to app %s", app)
-	return e
+	pool, err := ants.NewPool(config.GetConfig().Ants.Size, func(opts *ants.Options) {
+		opts.ExpiryDuration = 60 * time.Second
+		opts.Nonblocking = false
+		opts.PreAlloc = true
+		opts.MaxBlockingTasks = 10
+		opts.PanicHandler = t.handlepanic
+	})
+	if err != nil {
+		panic(err)
+	}
+	t.pool = pool
+	t.event = event.NewEvent(t.ctx, config.GetConfig().Event, t.pool)
+
+	signal.Notify(t.singal, syscall.SIGTERM)
+	signal.Notify(t.singal, syscall.SIGINT)
+	signal.Notify(t.singal, syscall.SIGQUIT)
+	signal.Notify(t.singal, syscall.SIGHUP)
+	t.log.Infof("welcome to app %s", app)
+	return t
 }
 
 func (t *Titan) ApiServer(addr, version string) *Titan {
@@ -103,11 +137,11 @@ func (t *Titan) Middlewares(middlewares map[string]map[string]any) *Titan {
 
 func (t *Titan) Scheduler() *Titan {
 	schedCtx := context.WithoutCancel(t.ctx)
-	t.scheduler = service.NewScheduler(schedCtx, t.log)
+	t.scheduler = cron.NewScheduler(schedCtx, t.log)
 	return t
 }
 
-func (t *Titan) Job(job *service.Job) *Titan {
+func (t *Titan) Job(job *cron.Job) *Titan {
 	if t.scheduler == nil {
 		panic("scheduler is nil")
 	}
@@ -118,12 +152,28 @@ func (t *Titan) Job(job *service.Job) *Titan {
 	return t
 }
 
+func (t *Titan) Plugins(conf *config.Plugin) *Titan {
+	if t.plugins == nil {
+		if conf == nil {
+			conf = &config.Plugin{
+				Path:    "/",
+				Refresh: 3,
+			}
+		}
+		t.plugins = plugin.NewPlugins(t.ctx, conf, t.pool)
+	}
+	return t
+}
+
 func (e *Titan) Start() {
 	if e.api != nil {
 		e.api.Start()
 	}
 	if e.scheduler != nil {
 		e.scheduler.Start()
+	}
+	if e.plugins != nil {
+		e.plugins.Start()
 	}
 	select {
 	case <-e.ctx.Done():
@@ -141,6 +191,9 @@ func (e *Titan) Stop() {
 	}
 	if e.api != nil {
 		e.api.Stop()
+	}
+	if e.plugins != nil {
+		e.plugins.Stop()
 	}
 	e.log.Info("titan stopped, byebye!")
 }

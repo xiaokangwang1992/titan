@@ -6,7 +6,7 @@
  Desc     : file system service
 */
 
-package service
+package filesystem
 
 import (
 	"context"

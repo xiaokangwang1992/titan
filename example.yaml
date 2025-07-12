@@ -1,0 +1,31 @@
+mode: release
+log-mode: debug
+http:
+  api-addr: ":8082"
+  routes: 
+    demo:
+      middlewares:
+        - default
+      routers:
+        - /demo,    POST,   Login
+  swagger: true
+  middlewares:
+    default: {}
+mysql: ""
+redis: "redis://:aMS623g2QH7BsRLh@35.221.161.234:6379/8"
+schedulers:
+  - enabled: false
+    name: "demo"
+    detail: "demo"
+    cron: "*/3 * * * * ?"
+    method: "Demo"
+    args: {}
+ants:
+  size: 100
+event:
+  msg_size: 1000
+plugin:
+  path: "file:///**/*"
+  refresh: 3 # seconds
+
+business:

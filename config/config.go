@@ -78,6 +78,15 @@ type Ants struct {
 	Size int `yaml:"size" default:"100"`
 }
 
+type Event struct {
+	MsgSize int `yaml:"msg_size" default:"1000"`
+}
+
+type Plugin struct {
+	Path    string `yaml:"path,omitempty"`
+	Refresh int    `yaml:"refresh,omitempty"`
+}
+
 type Config struct {
 	Mode       string      `yaml:"mode" default:"debug"`
 	Name       string      `yaml:"name" default:""`
@@ -91,6 +100,8 @@ type Config struct {
 	Schedulers []Scheduler `yaml:"schedulers,omitempty"`
 	Business   any         `yaml:"business,omitempty"`
 	Ants       *Ants       `yaml:"ants,omitempty"`
+	Event      *Event      `yaml:"event,omitempty"`
+	Plugin     *Plugin     `yaml:"plugin,omitempty"`
 }
 
 var (

@@ -6,7 +6,7 @@
  Desc     :
 */
 
-package service
+package kube
 
 import (
 	"context"

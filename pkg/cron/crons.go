@@ -3,7 +3,7 @@
 // @Email   : 'wangxk1991@gamil.com'
 // @Time    : 2024/01/19 15:32:15
 // Desc     : scheduler service
-package service
+package cron
 
 import (
 	"context"
