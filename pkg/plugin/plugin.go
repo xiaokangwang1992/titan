@@ -23,7 +23,6 @@ const (
 type Plugin interface {
 	Run() // run the plugin
 	GetName() PluginName
-	GetVersion() string
 	Stop()                 // stop the plugin
 	Health() PluginState   // get the health of the plugin
 	RefreshConfig(cfg any) // refresh the config of the plugin
@@ -34,6 +33,5 @@ type BasePlugin struct {
 	Context context.Context
 	Cancel  context.CancelFunc
 	Name    PluginName
-	Version string
 	Config  any
 }
