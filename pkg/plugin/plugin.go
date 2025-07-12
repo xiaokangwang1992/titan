@@ -16,29 +16,24 @@ type PluginState string
 
 const (
 	PluginStateCreate  PluginState = "create"
-	PluginStateInit    PluginState = "init"
 	PluginStateRunning PluginState = "running"
 	PluginStateStopped PluginState = "stopped"
-	PluginStatePaused  PluginState = "paused"
 )
 
-type PluginInterface interface {
-	Init() error // init the plugin
-	Run()        // run the plugin
+type Plugin interface {
+	Run() // run the plugin
 	GetName() PluginName
+	GetVersion() string
 	Stop()                 // stop the plugin
 	Health() PluginState   // get the health of the plugin
 	RefreshConfig(cfg any) // refresh the config of the plugin
 }
 
 type BasePlugin struct {
+	Plugin
 	Context context.Context
 	Cancel  context.CancelFunc
 	Name    PluginName
 	Version string
 	Config  any
-}
-
-func (b *BasePlugin) Init() error {
-	return nil
 }

@@ -83,8 +83,10 @@ type Event struct {
 }
 
 type Plugin struct {
-	Path    string `yaml:"path,omitempty"`
-	Refresh int    `yaml:"refresh,omitempty"`
+	Path             string `yaml:"path,omitempty"`
+	Refresh          int    `yaml:"refresh,omitempty"`
+	Config           string `yaml:"config,omitempty"`
+	GracefulShutdown int    `yaml:"graceful-shutdown,omitempty"`
 }
 
 type Config struct {

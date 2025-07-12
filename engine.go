@@ -156,9 +156,17 @@ func (t *Titan) Plugins(conf *config.Plugin) *Titan {
 	if t.plugins == nil {
 		if conf == nil {
 			conf = &config.Plugin{
-				Path:    "/",
-				Refresh: 3,
+				Path:             "/",
+				Refresh:          3,
+				GracefulShutdown: 0,
+				Config:           "",
 			}
+		}
+		if conf.GracefulShutdown == 0 {
+			conf.GracefulShutdown = 3
+		}
+		if conf.Config == "" {
+			conf.Config = "{\"configs\":{}}"
 		}
 		t.plugins = plugin.NewPlugins(t.ctx, conf, t.pool)
 	}
