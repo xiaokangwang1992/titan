@@ -15,6 +15,7 @@ import (
 	"os/signal"
 	"reflect"
 	"runtime/debug"
+	"strings"
 	"syscall"
 	"time"
 
@@ -166,6 +167,12 @@ func (t *Titan) Plugins(conf *config.Plugin) *Titan {
 			conf.GracefulShutdown = 3
 		}
 		t.plugins = plugin.NewPlugins(t.ctx, conf, t.pool)
+	}
+	if after, ok := strings.CutPrefix(conf.Config, "file://"); ok {
+		conf.Config = after
+	}
+	if after, ok := strings.CutPrefix(conf.Path, "file://"); ok {
+		conf.Path = after
 	}
 	return t
 }
