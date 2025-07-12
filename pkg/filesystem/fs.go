@@ -23,8 +23,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/piaobeizu/titan/config"
-	"github.com/piaobeizu/titan/utils"
-	"github.com/piaobeizu/titan/utils/cipher"
+	"github.com/piaobeizu/titan/pkg/utils"
+	"github.com/piaobeizu/titan/pkg/utils/cipher"
 	"github.com/piaobeizu/titan/vars"
 	"github.com/sirupsen/logrus"
 )

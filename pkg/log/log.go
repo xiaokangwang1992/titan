@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/piaobeizu/titan/cache"
-	"github.com/piaobeizu/titan/utils"
+	"github.com/piaobeizu/titan/pkg/utils"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )

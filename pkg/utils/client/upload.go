@@ -13,7 +13,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/piaobeizu/titan/utils"
+	"github.com/piaobeizu/titan/pkg/utils"
 )
 
 type UploadConfig struct {

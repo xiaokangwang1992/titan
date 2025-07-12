@@ -11,7 +11,7 @@ package config
 import (
 	"os"
 
-	"github.com/piaobeizu/titan/utils"
+	"github.com/piaobeizu/titan/pkg/utils"
 	"gopkg.in/yaml.v2"
 )
 
