@@ -165,9 +165,6 @@ func (t *Titan) Plugins(conf *config.Plugin) *Titan {
 		if conf.GracefulShutdown == 0 {
 			conf.GracefulShutdown = 3
 		}
-		if conf.Config == "" {
-			conf.Config = "{\"configs\":{}}"
-		}
 		t.plugins = plugin.NewPlugins(t.ctx, conf, t.pool)
 	}
 	return t

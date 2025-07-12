@@ -10,7 +10,6 @@ package plugin
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -22,7 +21,9 @@ import (
 	"github.com/panjf2000/ants/v2"
 	"github.com/piaobeizu/titan/config"
 	"github.com/piaobeizu/titan/pkg/event"
+	"github.com/piaobeizu/titan/pkg/utils"
 	"github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 // type Plugin struct {
@@ -96,7 +97,7 @@ import (
 // }
 
 type PluginsConfig struct {
-	Configs map[PluginName]any `yaml:"configs,omitempty"`
+	Plugins map[PluginName]any `yaml:"plugins,omitempty"`
 }
 
 type Plugins struct {
@@ -117,7 +118,7 @@ func NewPlugins(ctx context.Context, conf *config.Plugin, pool *ants.Pool) *Plug
 		queue:   event.NewEvent(ctx, nil, nil),
 		mu:      sync.RWMutex{},
 		pluginsConfig: PluginsConfig{
-			Configs: map[PluginName]any{},
+			Plugins: map[PluginName]any{},
 		},
 		pool: pool,
 	}
@@ -160,8 +161,10 @@ func (p *Plugins) Start() {
 			}
 			if p.config.Config != "" {
 				var cfg PluginsConfig
-				if err := json.Unmarshal([]byte(p.config.Config), &cfg); err == nil {
-					p.pluginsConfig = cfg
+				if conf, err := utils.ReadFileContent(p.config.Config); err == nil {
+					if err := yaml.Unmarshal([]byte(conf), &cfg); err == nil {
+						p.pluginsConfig.Plugins = cfg.Plugins
+					}
 				}
 			}
 			for _, plugin := range p.plugins {
@@ -173,7 +176,7 @@ func (p *Plugins) Start() {
 					plugin.Run()
 				}
 				if plugin.Health() == PluginStateRunning {
-					if config, ok := p.pluginsConfig.Configs[plugin.GetName()]; ok {
+					if config, ok := p.pluginsConfig.Plugins[plugin.GetName()]; ok {
 						plugin.RefreshConfig(config)
 					}
 				}
