@@ -147,7 +147,7 @@ func (p *Plugins) Start() {
 				if !strings.HasSuffix(entry.Name(), ".so") {
 					continue
 				}
-				plug, err := plugin.Open(filepath.Join(p.config.Path, entry.Name()))
+				plug, err := plugin.Open(filepath.Join(p.config.Path, entry.Name(), ".so"))
 				if err != nil {
 					logrus.Errorf("failed to load plugin: %+v", err)
 					continue
