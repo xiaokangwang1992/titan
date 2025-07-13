@@ -43,6 +43,13 @@ func RedisClient() *Redis {
 	return &Redis{Client: redisClient}
 }
 
+func (r *Redis) GetRedisOptions() *redis.Options {
+	if r.Client == nil {
+		panic("redis client is nil")
+	}
+	return r.Client.Options()
+}
+
 func (r *Redis) Exists(key string) bool {
 	return r.Client.Exists(context.Background(), key).Val() == 1
 }
