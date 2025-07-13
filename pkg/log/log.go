@@ -22,7 +22,6 @@ import (
 	"github.com/piaobeizu/titan/cache"
 	"github.com/piaobeizu/titan/pkg/utils"
 	"github.com/sirupsen/logrus"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -38,7 +37,7 @@ type LoggerFormatter struct {
 	ForceCutSpacialChar bool
 }
 
-func (m *LoggerFormatter) Format(entry *log.Entry) ([]byte, error) {
+func (m *LoggerFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	var (
 		b          *bytes.Buffer
 		newLog     string
@@ -55,13 +54,13 @@ func (m *LoggerFormatter) Format(entry *log.Entry) ([]byte, error) {
 		}
 	)
 	switch entry.Level {
-	case log.DebugLevel, log.TraceLevel:
+	case logrus.DebugLevel, logrus.TraceLevel:
 		levelColor = blue
-	case log.WarnLevel:
+	case logrus.WarnLevel:
 		levelColor = yellow
-	case log.ErrorLevel, log.FatalLevel, log.PanicLevel:
+	case logrus.ErrorLevel, logrus.FatalLevel, logrus.PanicLevel:
 		levelColor = red
-	case log.InfoLevel:
+	case logrus.InfoLevel:
 		levelColor = green
 	default:
 		levelColor = green
@@ -106,26 +105,26 @@ func (m *LoggerFormatter) Format(entry *log.Entry) ([]byte, error) {
 type Loghook struct {
 	Skip      int
 	Writer    io.Writer
-	Formatter log.Formatter
+	Formatter logrus.Formatter
 
-	levels []log.Level
+	levels []logrus.Level
 }
 
-func (h *Loghook) SetLevel(level log.Level) {
-	h.levels = []log.Level{}
-	for _, l := range log.AllLevels {
+func (h *Loghook) SetLevel(level logrus.Level) {
+	h.levels = []logrus.Level{}
+	for _, l := range logrus.AllLevels {
 		if level >= l {
 			h.levels = append(h.levels, l)
 		}
 	}
 }
 
-func (h *Loghook) Levels() []log.Level {
+func (h *Loghook) Levels() []logrus.Level {
 	return h.levels
 }
 
 // Fire implement fire
-func (h *Loghook) Fire(entry *log.Entry) error {
+func (h *Loghook) Fire(entry *logrus.Entry) error {
 	file, line := findCaller(h.Skip)
 	entry.Data["line"] = fmt.Sprintf("%s:%d", file, line)
 	msg, err := h.Formatter.Format(entry)
@@ -176,25 +175,26 @@ func getCaller(skip int) (string, int) {
 }
 
 func InitLog(app, logMode string) {
-	level := log.InfoLevel
+	level := logrus.InfoLevel
 	if logMode == "" {
 		logMode = utils.GetEnv("TITAN_DEBUG_MODE", "debug")
 	}
 	switch strings.ToLower(logMode) {
 	case "debug":
-		level = log.DebugLevel
+		level = logrus.DebugLevel
 	case "info":
-		level = log.InfoLevel
+		level = logrus.InfoLevel
 	case "warn":
-		level = log.WarnLevel
+		level = logrus.WarnLevel
 	case "error":
-		level = log.ErrorLevel
+		level = logrus.ErrorLevel
 	case "fatal":
-		level = log.FatalLevel
+		level = logrus.FatalLevel
 	case "panic":
+		level = logrus.PanicLevel
 	}
-	log.SetOutput(io.Discard)
-	log.AddHook(loggerHook(level))
+	logrus.SetOutput(io.Discard)
+	logrus.AddHook(loggerHook(level))
 
 	if os.Getenv("LOG_FILE_PATH") != "" {
 		lf, err := logFile(fmt.Sprintf("app-%s.%s.log", app, time.Now().Local().Format("06-01-02")))
@@ -205,7 +205,7 @@ func InitLog(app, logMode string) {
 	}
 }
 
-func loggerHook(lvl log.Level) *Loghook {
+func loggerHook(lvl logrus.Level) *Loghook {
 	l := &Loghook{
 		Skip: 5,
 		Formatter: &LoggerFormatter{

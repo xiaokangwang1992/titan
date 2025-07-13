@@ -6,6 +6,7 @@ toolchain go1.23.8
 
 require (
 	github.com/sirupsen/logrus v1.9.3
+	golang.org/x/text v0.19.0
 	gorm.io/gorm v1.25.7
 	k8s.io/client-go v0.32.3
 	k8s.io/klog/v2 v2.130.1
@@ -61,7 +62,6 @@ require (
 	golang.org/x/oauth2 v0.23.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/term v0.25.0 // indirect
-	golang.org/x/text v0.19.0 // indirect
 	golang.org/x/time v0.7.0 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect

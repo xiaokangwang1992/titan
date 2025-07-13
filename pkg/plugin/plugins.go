@@ -90,7 +90,7 @@ func (p *Plugins) Start() {
 				newPlugin, err := plug.Lookup(fmt.Sprintf("New%sPlugin", pluginName))
 				if err != nil {
 					log.Printf("❌ symbol not found: %v", err)
-					return
+					continue
 				}
 				np := newPlugin.(func(context.Context, PluginName, any) Plugin)(p.ctx, name, ps.Config)
 				p.plugins[name] = np
