@@ -1,12 +1,10 @@
 module github.com/piaobeizu/titan
 
-go 1.23.0
-
-toolchain go1.23.8
+go 1.24.5
 
 require (
+	github.com/GMISWE/ieops-plugins v0.0.0-20250713083645-712c767b2969
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/text v0.19.0
 	gorm.io/gorm v1.25.7
 	k8s.io/client-go v0.32.3
 	k8s.io/klog/v2 v2.130.1
@@ -60,8 +58,9 @@ require (
 	golang.org/x/crypto v0.28.0 // indirect
 	golang.org/x/net v0.30.0 // indirect
 	golang.org/x/oauth2 v0.23.0 // indirect
-	golang.org/x/sync v0.8.0 // indirect
+	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/term v0.25.0 // indirect
+	golang.org/x/text v0.27.0 // indirect
 	golang.org/x/time v0.7.0 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
@@ -80,7 +79,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/gin-gonic/gin v1.10.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/panjf2000/ants/v2 v2.10.0
+	github.com/panjf2000/ants/v2 v2.11.3
 	github.com/redis/go-redis/v9 v9.6.1
 	github.com/robfig/cron v1.2.0
 	golang.org/x/sys v0.26.0

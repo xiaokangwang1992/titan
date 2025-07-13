@@ -19,11 +19,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/GMISWE/ieops-plugins/event"
 	"github.com/GMISWE/ieops-plugins/plugin"
 	"github.com/panjf2000/ants/v2"
 	"github.com/piaobeizu/titan/config"
 	"github.com/piaobeizu/titan/pkg/cron"
+	"github.com/piaobeizu/titan/pkg/event"
 	"github.com/piaobeizu/titan/pkg/log"
 	"github.com/piaobeizu/titan/pkg/service"
 	"github.com/piaobeizu/titan/pkg/utils"
@@ -166,7 +166,12 @@ func (t *Titan) Plugins(conf *config.Plugin) *Titan {
 		if conf.GracefulShutdown == 0 {
 			conf.GracefulShutdown = 3
 		}
-		t.plugins = plugin.NewPlugins(t.ctx, conf, t.pool)
+		t.plugins = plugin.NewPlugins(t.ctx, &plugin.Config{
+			Path:             conf.Path,
+			Refresh:          conf.Refresh,
+			GracefulShutdown: conf.GracefulShutdown,
+			Config:           conf.Config,
+		}, t.pool)
 	}
 	if after, ok := strings.CutPrefix(conf.Config, "file://"); ok {
 		conf.Config = after
