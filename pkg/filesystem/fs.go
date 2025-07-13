@@ -23,7 +23,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/piaobeizu/titan/config"
-	"github.com/piaobeizu/titan/pkg/constants"
 	"github.com/piaobeizu/titan/pkg/utils"
 	"github.com/piaobeizu/titan/pkg/utils/cipher"
 	"github.com/sirupsen/logrus"
@@ -259,7 +258,7 @@ func (u *FileSystem) ListDir(path string, hidden bool) (items []map[string]any, 
 		if !hidden && strings.HasPrefix(entry.Name(), ".") {
 			continue
 		}
-		if hidden && strings.HasSuffix(entry.Name(), constants.FileMetaSuffix) {
+		if hidden && strings.HasSuffix(entry.Name(), ".meta") {
 			continue
 		}
 		info, err = entry.Info()
@@ -440,8 +439,8 @@ func (u *FileSystem) setFileMeta(absPath, fileName string, meta *FileMeta) error
 func (u *FileSystem) getMetaPath(absPath, fileName string) string {
 	fileName = strings.TrimPrefix(fileName, "/")
 	fileName = strings.TrimPrefix(fileName, ".")
-	fileName = strings.TrimSuffix(fileName, constants.FileTempSuffix)
-	return filepath.Join(absPath, fmt.Sprintf(".%s%s", fileName, constants.FileMetaSuffix))
+	fileName = strings.TrimSuffix(fileName, ".tmp")
+	return filepath.Join(absPath, fmt.Sprintf(".%s.meta", fileName))
 }
 
 func (u *FileSystem) getAbsPath(path string) string {

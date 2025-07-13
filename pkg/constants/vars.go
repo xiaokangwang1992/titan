@@ -8,16 +8,14 @@
 
 package constants
 
-import "os"
+// var (
+// 	FileMetaSuffix = getEnv("FILE_META_SUFFIX", ".meta")
+// 	FileTempSuffix = getEnv("FILE_TEMP_SUFFIX", ".tmp")
+// )
 
-var (
-	FileMetaSuffix = getEnv("FILE_META_SUFFIX", ".meta")
-	FileTempSuffix = getEnv("FILE_TEMP_SUFFIX", ".tmp")
-)
-
-func getEnv(key, def string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return def
-}
+// func getEnv(key, def string) string {
+// 	if v := os.Getenv(key); v != "" {
+// 		return v
+// 	}
+// 	return def
+// }
