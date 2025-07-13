@@ -11,7 +11,9 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
+	"os"
 	"plugin"
 	"sync"
 	"time"
@@ -19,7 +21,6 @@ import (
 	"github.com/panjf2000/ants/v2"
 	"github.com/piaobeizu/titan/config"
 	"github.com/piaobeizu/titan/pkg/event"
-	"github.com/piaobeizu/titan/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -75,8 +76,8 @@ func (p *Plugins) Start() {
 
 			if p.config.Config != "" {
 				var cfg PluginsConfig
-				if conf, err := utils.ReadFileContent(p.config.Config); err == nil {
-					if err := yaml.Unmarshal([]byte(conf), &cfg); err == nil {
+				if conf, err := readPluginConfig(p.config.Config); err == nil {
+					if err := yaml.Unmarshal(conf, &cfg); err == nil {
 						p.pluginsConfig.Plugins = cfg.Plugins
 					}
 				}
@@ -148,4 +149,14 @@ func (p *Plugins) Stop() {
 			logrus.WithFields(logrus.Fields{"plugin": plugin.GetName()}).Info("plugin stopped")
 		}
 	}
+}
+
+func readPluginConfig(path string) ([]byte, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+	content, err := io.ReadAll(file)
+	return content, err
 }
