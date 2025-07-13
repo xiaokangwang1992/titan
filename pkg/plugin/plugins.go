@@ -81,6 +81,9 @@ func (p *Plugins) Start() {
 				}
 			}
 			for name, ps := range p.pluginsConfig.Plugins {
+				if _, ok := p.plugins[name]; ok {
+					continue
+				}
 				plug, err := plugin.Open(ps.Path)
 				if err != nil {
 					logrus.Errorf("failed to load plugin: %+v", err)
