@@ -20,7 +20,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/piaobeizu/titan/vars"
+	"github.com/piaobeizu/titan/pkg/constants"
 	"gopkg.in/yaml.v2"
 )
 
@@ -309,7 +309,7 @@ func Zip(source, target string) error {
 }
 
 func GetTempFilePath(path, filename string) string {
-	return filepath.Join(path, "."+filename+vars.FileTempSuffix)
+	return filepath.Join(path, "."+filename+constants.FileTempSuffix)
 }
 
 func CalFileMD5(path string) (string, error) {

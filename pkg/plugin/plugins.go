@@ -113,7 +113,7 @@ func (p *Plugins) Start() {
 				}
 			}
 
-			logrus.Info("agent is running")
+			logrus.Info("plugins is running")
 			timer.Reset(time.Duration(p.config.Refresh) * time.Second)
 		case <-p.ctx.Done():
 			close(check)

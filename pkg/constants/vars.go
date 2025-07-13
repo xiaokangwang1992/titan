@@ -6,7 +6,7 @@
  * @Desc    : 描述信息
  */
 
-package vars
+package constants
 
 import "os"
 
