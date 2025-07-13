@@ -154,30 +154,29 @@ func (t *Titan) Job(job *cron.Job) *Titan {
 }
 
 func (t *Titan) Plugins(conf *config.Plugin) *Titan {
-	if t.plugins == nil {
-		if conf == nil {
-			conf = &config.Plugin{
-				Path:             "/",
-				Refresh:          3,
-				GracefulShutdown: 0,
-				Config:           "",
-			}
+	if conf == nil {
+		conf = &config.Plugin{
+			Path:             "/",
+			Refresh:          3,
+			GracefulShutdown: 0,
+			Config:           "",
 		}
-		if conf.GracefulShutdown == 0 {
-			conf.GracefulShutdown = 3
-		}
-		t.plugins = plugin.NewPlugins(t.ctx, &plugin.Config{
-			Path:             conf.Path,
-			Refresh:          conf.Refresh,
-			GracefulShutdown: conf.GracefulShutdown,
-			Config:           conf.Config,
-		}, t.pool)
+	}
+	if conf.GracefulShutdown == 0 {
+		conf.GracefulShutdown = 3
 	}
 	if after, ok := strings.CutPrefix(conf.Config, "file://"); ok {
 		conf.Config = after
 	}
 	if after, ok := strings.CutPrefix(conf.Path, "file://"); ok {
 		conf.Path = after
+	}
+	if t.plugins == nil {
+		t.plugins = plugin.NewPlugins(t.ctx, &plugin.Config{
+			Refresh:          conf.Refresh,
+			GracefulShutdown: conf.GracefulShutdown,
+			Config:           conf.Config,
+		}, t.pool)
 	}
 	return t
 }
