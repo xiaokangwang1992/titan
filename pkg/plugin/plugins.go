@@ -72,8 +72,6 @@ func (p *Plugins) Start() {
 		select {
 		case <-ticker.C:
 			p.mu.Lock()
-			defer p.mu.Unlock()
-
 			if p.config.Config != "" {
 				var cfg PluginsConfig
 				if conf, err := readPluginConfig(p.config.Config); err == nil {
@@ -97,13 +95,16 @@ func (p *Plugins) Start() {
 				np := newPlugin.(func(context.Context, PluginName, any) Plugin)(p.ctx, name, ps.Config)
 				p.plugins[name] = np
 			}
+			p.mu.Unlock()
 			for _, plugin := range p.plugins {
 				if plugin.Health() == PluginStateStopped {
 					plugin.Stop()
 					delete(p.plugins, plugin.GetName())
 				}
 				if plugin.Health() == PluginStateCreate {
-					plugin.Run()
+					p.pool.Submit(func() {
+						plugin.Run()
+					})
 				}
 				if plugin.Health() == PluginStateRunning {
 					if config, ok := p.pluginsConfig.Plugins[plugin.GetName()]; ok {
