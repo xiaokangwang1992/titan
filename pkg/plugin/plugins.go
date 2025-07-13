@@ -12,10 +12,7 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 	"plugin"
-	"strings"
 	"sync"
 	"time"
 
@@ -24,11 +21,20 @@ import (
 	"github.com/piaobeizu/titan/pkg/event"
 	"github.com/piaobeizu/titan/pkg/utils"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"gopkg.in/yaml.v2"
 )
 
+type PluginConfig struct {
+	Path    string `yaml:"path,omitempty"`
+	Version string `yaml:"version,omitempty"`
+	Name    string `yaml:"name,omitempty"`
+	Config  any    `yaml:"config,omitempty"`
+}
+
 type PluginsConfig struct {
-	Plugins map[PluginName]any `yaml:"plugins,omitempty"`
+	Plugins map[PluginName]PluginConfig `yaml:"plugins,omitempty"`
 }
 
 type Plugins struct {
@@ -49,7 +55,7 @@ func NewPlugins(ctx context.Context, conf *config.Plugin, pool *ants.Pool) *Plug
 		queue:   event.NewEvent(ctx, nil, nil),
 		mu:      sync.RWMutex{},
 		pluginsConfig: PluginsConfig{
-			Plugins: map[PluginName]any{},
+			Plugins: map[PluginName]PluginConfig{},
 		},
 		pool: pool,
 	}
@@ -64,32 +70,9 @@ func (p *Plugins) Start() {
 	for {
 		select {
 		case <-timer.C:
-			entries, err := os.ReadDir(p.config.Path)
-			if err != nil {
-				return
-			}
 			p.mu.Lock()
 			defer p.mu.Unlock()
-			for _, entry := range entries {
-				if entry.IsDir() {
-					continue
-				}
-				if !strings.HasSuffix(entry.Name(), ".so") {
-					continue
-				}
-				plug, err := plugin.Open(filepath.Join(p.config.Path, entry.Name()))
-				if err != nil {
-					logrus.Errorf("failed to load plugin: %+v", err)
-					continue
-				}
-				newPlugin, err := plug.Lookup(fmt.Sprintf("New%sPlugin", entry.Name()))
-				if err != nil {
-					log.Printf("❌ symbol not found: %v", err)
-					return
-				}
-				demoPlugin := newPlugin.(func() Plugin)()
-				p.plugins[demoPlugin.GetName()] = demoPlugin
-			}
+
 			if p.config.Config != "" {
 				var cfg PluginsConfig
 				if conf, err := utils.ReadFileContent(p.config.Config); err == nil {
@@ -97,6 +80,22 @@ func (p *Plugins) Start() {
 						p.pluginsConfig.Plugins = cfg.Plugins
 					}
 				}
+			}
+			logrus.Infof("plugins config: %+v", p.pluginsConfig)
+			for name, ps := range p.pluginsConfig.Plugins {
+				plug, err := plugin.Open(ps.Path)
+				if err != nil {
+					logrus.Errorf("failed to load plugin: %+v", err)
+					continue
+				}
+				pluginName := cases.Title(language.Und).String(string(name))
+				newPlugin, err := plug.Lookup(fmt.Sprintf("New%sPlugin", pluginName))
+				if err != nil {
+					log.Printf("❌ symbol not found: %v", err)
+					return
+				}
+				demoPlugin := newPlugin.(func() Plugin)()
+				p.plugins[demoPlugin.GetName()] = demoPlugin
 			}
 			for _, plugin := range p.plugins {
 				if plugin.Health() == PluginStateStopped {
