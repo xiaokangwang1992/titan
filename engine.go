@@ -15,7 +15,6 @@ import (
 	"os/signal"
 	"reflect"
 	"runtime/debug"
-	"strings"
 	"syscall"
 	"time"
 
@@ -156,7 +155,6 @@ func (t *Titan) Job(job *cron.Job) *Titan {
 func (t *Titan) Plugins(conf *config.Plugin) *Titan {
 	if conf == nil {
 		conf = &config.Plugin{
-			Path:             "/",
 			Refresh:          3,
 			GracefulShutdown: 0,
 			Config:           "",
@@ -164,12 +162,6 @@ func (t *Titan) Plugins(conf *config.Plugin) *Titan {
 	}
 	if conf.GracefulShutdown == 0 {
 		conf.GracefulShutdown = 3
-	}
-	if after, ok := strings.CutPrefix(conf.Config, "file://"); ok {
-		conf.Config = after
-	}
-	if after, ok := strings.CutPrefix(conf.Path, "file://"); ok {
-		conf.Path = after
 	}
 	if t.plugins == nil {
 		t.plugins = plugin.NewPlugins(t.ctx, &plugin.Config{
