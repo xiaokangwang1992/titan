@@ -95,8 +95,8 @@ func (p *Plugins) Start() {
 					log.Printf("❌ symbol not found: %v", err)
 					return
 				}
-				demoPlugin := newPlugin.(func() Plugin)()
-				p.plugins[demoPlugin.GetName()] = demoPlugin
+				np := newPlugin.(func(context.Context, PluginName, any) Plugin)(p.ctx, name, ps.Config)
+				p.plugins[name] = np
 			}
 			for _, plugin := range p.plugins {
 				if plugin.Health() == PluginStateStopped {
@@ -108,7 +108,7 @@ func (p *Plugins) Start() {
 				}
 				if plugin.Health() == PluginStateRunning {
 					if config, ok := p.pluginsConfig.Plugins[plugin.GetName()]; ok {
-						plugin.RefreshConfig(config)
+						plugin.RefreshConfig(config.Config)
 					}
 				}
 			}
