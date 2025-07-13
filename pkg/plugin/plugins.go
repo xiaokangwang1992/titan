@@ -116,7 +116,7 @@ func (p *Plugins) Start() {
 				}
 			}
 
-			logrus.Info("all plugins are running")
+			logrus.Infof("all %d plugins are running", len(p.plugins))
 			timer.Reset(time.Duration(p.config.Refresh) * time.Second)
 		case <-p.ctx.Done():
 			close(check)
