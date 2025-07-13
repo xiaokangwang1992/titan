@@ -66,11 +66,11 @@ func NewPlugins(ctx context.Context, conf *config.Plugin, pool *ants.Pool) *Plug
 func (p *Plugins) Start() {
 	check := make(chan struct{}, 1)
 	check <- struct{}{}
-	ticker := time.NewTicker(time.Duration(p.config.Refresh) * time.Second)
-	defer ticker.Stop()
+	timer := time.NewTimer(100 * time.Millisecond)
+	defer timer.Stop()
 	for {
 		select {
-		case <-ticker.C:
+		case <-timer.C:
 			p.mu.Lock()
 			if p.config.Config != "" {
 				var cfg PluginsConfig
@@ -112,7 +112,9 @@ func (p *Plugins) Start() {
 					}
 				}
 			}
+
 			logrus.Info("all plugins are running")
+			timer.Reset(time.Duration(p.config.Refresh) * time.Second)
 		case <-p.ctx.Done():
 			close(check)
 			return
