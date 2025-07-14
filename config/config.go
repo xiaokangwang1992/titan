@@ -12,7 +12,6 @@ import (
 	"os"
 
 	"github.com/piaobeizu/titan/pkg/utils"
-	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
@@ -123,10 +122,14 @@ func getConfig(f string) (Config, error) {
 func getRoutes() (map[string]ApiGroup, error) {
 	var (
 		err error
-		ret = cfg.Http.Routes
+		ret map[string]ApiGroup
 	)
-	if ret == nil {
-		err = utils.ReadFileToStruct(cfg.Http.Route, &ret, "yaml", false)
+	if cfg.Http != nil {
+		if cfg.Http.Routes != nil {
+			ret = cfg.Http.Routes
+		} else {
+			err = utils.ReadFileToStruct(cfg.Http.Route, &ret, "yaml", false)
+		}
 	}
 	return ret, err
 }
@@ -136,7 +139,6 @@ func InitCfg(f string) (err error) {
 	if err != nil {
 		return
 	}
-	logrus.Infof("get config: %+v", cfg)
 	return initRoutes()
 }
 func initRoutes() (err error) {
