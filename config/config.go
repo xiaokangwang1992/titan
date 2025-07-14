@@ -12,6 +12,7 @@ import (
 	"os"
 
 	"github.com/piaobeizu/titan/pkg/utils"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
@@ -135,6 +136,7 @@ func InitCfg(f string) (err error) {
 	if err != nil {
 		return
 	}
+	logrus.Infof("get config: %+v", cfg)
 	return initRoutes()
 }
 func initRoutes() (err error) {
