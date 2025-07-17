@@ -18,11 +18,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/GMISWE/ieops-plugins/event"
 	"github.com/GMISWE/ieops-plugins/plugin"
 	"github.com/panjf2000/ants/v2"
 	"github.com/piaobeizu/titan/config"
 	"github.com/piaobeizu/titan/pkg/cron"
-	"github.com/piaobeizu/titan/pkg/event"
 	"github.com/piaobeizu/titan/pkg/log"
 	"github.com/piaobeizu/titan/pkg/service"
 	"github.com/piaobeizu/titan/pkg/utils"
@@ -69,7 +69,9 @@ func NewTitan(ctx context.Context, app, logMode string) *Titan {
 		panic(err)
 	}
 	t.pool = pool
-	t.event = event.NewEvent(t.ctx, config.GetConfig().Event, t.pool)
+	t.event = event.NewEvent(t.ctx, &event.Config{
+		MsgSize: config.GetConfig().Event.MsgSize,
+	}, t.pool)
 
 	signal.Notify(t.singal, syscall.SIGTERM)
 	signal.Notify(t.singal, syscall.SIGINT)
@@ -168,7 +170,7 @@ func (t *Titan) Plugins(conf *config.Plugin) *Titan {
 			Refresh:          conf.Refresh,
 			GracefulShutdown: conf.GracefulShutdown,
 			Config:           conf.Config,
-		}, t.pool)
+		}, nil, t.pool)
 	}
 	return t
 }
