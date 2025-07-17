@@ -69,10 +69,11 @@ func NewTitan(ctx context.Context, app, logMode string) *Titan {
 		panic(err)
 	}
 	t.pool = pool
-	t.event = event.NewEvent(t.ctx, &event.Config{
-		MsgSize: config.GetConfig().Event.MsgSize,
-	}, t.pool)
-
+	t.event = event.NewEvent(t.ctx, []event.EventOption{
+		event.WithConfig(&event.Config{
+			MsgSize: config.GetConfig().Event.MsgSize,
+		}),
+		event.WithPool(t.pool)}...)
 	signal.Notify(t.singal, syscall.SIGTERM)
 	signal.Notify(t.singal, syscall.SIGINT)
 	signal.Notify(t.singal, syscall.SIGQUIT)
@@ -166,11 +167,13 @@ func (t *Titan) Plugins(conf *config.Plugin) *Titan {
 		conf.GracefulShutdown = 3
 	}
 	if t.plugins == nil {
-		t.plugins = plugin.NewPlugins(t.ctx, &plugin.Config{
-			Refresh:          conf.Refresh,
-			GracefulShutdown: conf.GracefulShutdown,
-			Config:           conf.Config,
-		}, nil, t.pool)
+		t.plugins = plugin.NewPlugins(t.ctx, []plugin.PluginsOption{
+			plugin.WithConfig(&plugin.Config{
+				Refresh:          conf.Refresh,
+				GracefulShutdown: conf.GracefulShutdown,
+				Config:           conf.Config,
+			}),
+			plugin.WithPool(t.pool)}...)
 	}
 	return t
 }
