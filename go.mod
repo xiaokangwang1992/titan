@@ -3,7 +3,7 @@ module github.com/piaobeizu/titan
 go 1.24.5
 
 require (
-	github.com/GMISWE/ieops-plugins v0.0.0-20250717082306-0ada26d8add8
+	github.com/GMISWE/ieops-plugins v0.0.0-20250717084913-a3e8bb61c4fb
 	github.com/hibiken/asynq v0.25.1
 	github.com/sirupsen/logrus v1.9.3
 	gorm.io/gorm v1.25.7
