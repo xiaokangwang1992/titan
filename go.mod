@@ -4,6 +4,7 @@ go 1.24.5
 
 require (
 	github.com/GMISWE/ieops-plugins v0.0.0-20250717070122-3547442b7da2
+	github.com/hibiken/asynq v0.25.1
 	github.com/sirupsen/logrus v1.9.3
 	gorm.io/gorm v1.25.7
 	k8s.io/client-go v0.32.3
@@ -37,7 +38,6 @@ require (
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/hibiken/asynq v0.25.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
@@ -97,3 +97,5 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gorm.io/driver/mysql v1.5.7
 )
+
+replace github.com/piaobeizu/titan => github.com/xiaokangwang1992/titan v0.4.5-0.20250717070524-a2569ecc5163

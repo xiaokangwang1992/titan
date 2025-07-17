@@ -18,7 +18,7 @@ type AsynqTask struct {
 	mux    *asynq.ServeMux
 }
 
-func NewQTask(server *asynq.Server) *AsynqTask {
+func NewAsynqTask(server *asynq.Server) *AsynqTask {
 	return &AsynqTask{
 		server: server,
 		mux:    asynq.NewServeMux(),
