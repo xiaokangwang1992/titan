@@ -36,7 +36,7 @@ type Titan struct {
 	scheduler *cron.Scheduler
 	event     *event.Event
 	pool      *ants.Pool
-	plugins   *plugin.Plugins
+	pm        *plugin.PluginManager
 	stop      chan struct{}
 	singal    chan os.Signal
 	log       *logrus.Entry
@@ -158,20 +158,20 @@ func (t *Titan) Job(job *cron.Job) *Titan {
 func (t *Titan) Plugins(conf *config.Plugin) *Titan {
 	if conf == nil {
 		conf = &config.Plugin{
-			Refresh:          3,
+			Refresh:          1,
 			GracefulShutdown: 0,
-			Config:           "",
 		}
 	}
 	if conf.GracefulShutdown == 0 {
 		conf.GracefulShutdown = 3
 	}
-	if t.plugins == nil {
-		t.plugins = plugin.NewPlugins(t.ctx, []plugin.PluginsOption{
-			plugin.WithConfig(&plugin.Config{
+	if t.pm == nil {
+		t.pm = plugin.NewPluginManager(t.ctx, []plugin.PluginManagerOption{
+			plugin.WithConfig(&plugin.PluginManagerConfig{
 				Refresh:          conf.Refresh,
 				GracefulShutdown: conf.GracefulShutdown,
-				Config:           conf.Config,
+				EventSize:        config.GetConfig().Event.MsgSize,
+				PoolSize:         config.GetConfig().Ants.Size,
 			}),
 			plugin.WithPool(t.pool)}...)
 	}
@@ -184,9 +184,6 @@ func (e *Titan) Start() {
 	}
 	if e.scheduler != nil {
 		e.scheduler.Start()
-	}
-	if e.plugins != nil {
-		e.plugins.Start()
 	}
 	select {
 	case <-e.ctx.Done():
@@ -205,8 +202,8 @@ func (e *Titan) Stop() {
 	if e.api != nil {
 		e.api.Stop()
 	}
-	if e.plugins != nil {
-		e.plugins.Stop()
+	if e.pm != nil {
+		e.pm.Stop()
 	}
 	e.log.Info("titan stopped, byebye!")
 }
