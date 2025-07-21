@@ -26,11 +26,14 @@ package cipher
 
 import (
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 var (
 	kb1 = `u-00000001:o-00000001:test-1:1750777732`
-	kb2 = ``
+	kb2 = uuid.Must(uuid.NewRandom()).String()
+	// kb2 = fmt.Sprintf("%s-%d-ssss", uuid.New().String(), time.Now().UnixNano())
 	kb3 = `#!/bin/bash
 
 DRY_RUN=false
@@ -163,24 +166,38 @@ main "$@"`
 )
 
 func TestEncrypt(t *testing.T) {
-	cases := []struct {
-		Name string
-		text []byte
-	}{
-		{"a", []byte(kb1)},
-		{"b", []byte(kb2)},
-		{"c", []byte(kb3)},
-	}
-	for _, c := range cases {
-		t.Run(c.Name, func(t *testing.T) {
-			if ans, err := EncryptCompact(c.text, "uOvKLmVfztaXGpNYd4Z0I1SiT7MweJhl"); err != nil {
-				t.Fatalf("encrypt text %s failed: %+v",
-					c.text, err)
-			} else {
-				t.Logf("%s encrypt text is { %s }", c.Name, ans)
-			}
-		})
-	}
+	// 测试用例a：使用固定的测试数据
+	t.Run("a", func(t *testing.T) {
+		text := []byte(kb1)
+		t.Logf("text is %s", string(text))
+		if ans, err := EncryptCompact(text, "uOvKLmVfztaXGpNYd4Z0I1SiT7MweJhl"); err != nil {
+			t.Fatalf("encrypt text %s failed: %+v", text, err)
+		} else {
+			t.Logf("a encrypt text is { %s }", ans)
+		}
+	})
+
+	// 测试用例b：每次运行都生成新的UUID
+	t.Run("b", func(t *testing.T) {
+		text := []byte(uuid.New().String()) // 每次运行此测试用例都生成新UUID
+		t.Logf("text is %s", string(text))
+		if ans, err := EncryptCompact(text, "uOvKLmVfztaXGpNYd4Z0I1SiT7MweJhl"); err != nil {
+			t.Fatalf("encrypt text %s failed: %+v", text, err)
+		} else {
+			t.Logf("b encrypt text is { %s }", ans)
+		}
+	})
+
+	// 测试用例c：每次运行都生成另一个新的UUID
+	t.Run("c", func(t *testing.T) {
+		text := []byte(uuid.New().String()) // 每次运行此测试用例都生成新UUID
+		t.Logf("text is %s", string(text))
+		if ans, err := EncryptCompact(text, "uOvKLmVfztaXGpNYd4Z0I1SiT7MweJhl"); err != nil {
+			t.Fatalf("encrypt text %s failed: %+v", text, err)
+		} else {
+			t.Logf("c encrypt text is { %s }", ans)
+		}
+	})
 }
 
 func TestDecrypt(t *testing.T) {

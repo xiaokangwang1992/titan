@@ -10,8 +10,12 @@ package utils
 
 import (
 	"bytes"
+	"crypto/md5"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/url"
 	"os"
 	"regexp"
@@ -21,18 +25,14 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/piaobeizu/titan/pkg/utils/cipher"
 	"gopkg.in/yaml.v2"
 )
 
 func GenerateUUID(prefix, key string) string {
-	uuid := fmt.Sprintf("%s-%d", uuid.New().String(), time.Now().UnixNano())
-	uuidStr, err := cipher.EncryptCompact([]byte(uuid), key)
-	if err != nil {
-		return ""
-	}
-	return fmt.Sprintf("%s-%s", prefix, uuidStr[0:8])
+	n, _ := rand.Int(rand.Reader, big.NewInt(1000))
+	h := md5.New()
+	fmt.Fprintf(h, "%s-%s-%d", key, time.Now().Local().Format("2006-01-02 15:04:05"), n.Int64())
+	return fmt.Sprintf("%s-%s", prefix, hex.EncodeToString(h.Sum(nil))[8:16])
 }
 
 func Struct2Json(data any) string {
