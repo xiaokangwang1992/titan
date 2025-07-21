@@ -27,5 +27,6 @@ event:
 plugin:
   refresh: 3 # seconds
   graceful-shutdown: 0
+  md5-check: false
 
 business:

@@ -79,12 +79,13 @@ type Ants struct {
 }
 
 type Event struct {
-	MsgSize int `yaml:"msg_size" default:"1000"`
+	MsgSize int `yaml:"msg-size" default:"1000"`
 }
 
 type Plugin struct {
-	Refresh          int `yaml:"refresh,omitempty"`
-	GracefulShutdown int `yaml:"graceful-shutdown,omitempty"`
+	Refresh          int  `yaml:"refresh,omitempty"`
+	GracefulShutdown int  `yaml:"graceful-shutdown,omitempty"`
+	Md5Check         bool `yaml:"md5-check,omitempty"`
 }
 
 type Config struct {

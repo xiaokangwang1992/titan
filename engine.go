@@ -168,10 +168,10 @@ func (t *Titan) Plugins(conf *config.Plugin) *Titan {
 	if t.pm == nil {
 		t.pm = plugin.NewPluginManager(t.ctx, []plugin.PluginManagerOption{
 			plugin.WithConfig(&plugin.PluginManagerConfig{
-				Refresh:          conf.Refresh,
 				GracefulShutdown: conf.GracefulShutdown,
 				EventSize:        config.GetConfig().Event.MsgSize,
 				PoolSize:         config.GetConfig().Ants.Size,
+				Md5Check:         conf.Md5Check,
 			}),
 			plugin.WithPool(t.pool)}...)
 	}
