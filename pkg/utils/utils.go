@@ -21,8 +21,19 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/piaobeizu/titan/pkg/utils/cipher"
 	"gopkg.in/yaml.v2"
 )
+
+func GenerateUUID(prefix, key string) string {
+	uuid := fmt.Sprintf("%s-%d", uuid.New().String(), time.Now().UnixNano())
+	uuidStr, err := cipher.EncryptCompact([]byte(uuid), key)
+	if err != nil {
+		return ""
+	}
+	return fmt.Sprintf("%s-%s", prefix, uuidStr[0:8])
+}
 
 func Struct2Json(data any) string {
 	str, err := json.MarshalIndent(data, "", "  ")
