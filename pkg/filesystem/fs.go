@@ -233,7 +233,7 @@ func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, overwrite
 }
 
 // SimpleUploadFile handles form multipart file uploads
-func (u *FileSystem) UploadMPFile(c *gin.Context, path string, overwrite bool, mode os.FileMode) (string, int64, error) {
+func (u *FileSystem) UploadMPFile(c *gin.Context, path, filename string, overwrite bool, mode os.FileMode) (string, int64, error) {
 	var (
 		absPath = u.getAbsPath(path)
 		md5     string
@@ -247,7 +247,6 @@ func (u *FileSystem) UploadMPFile(c *gin.Context, path string, overwrite bool, m
 	}
 	defer file.Close()
 
-	filename := header.Filename
 	u.logger.Infof("uploading file: %s, size: %d bytes", filename, header.Size)
 
 	// 检查文件类型
