@@ -238,6 +238,11 @@ func (s *ApiServer) callMiddleware(ms []string, sse bool) (mfs []gin.HandlerFunc
 }
 
 func (s *ApiServer) callHandler(f string) gin.HandlerFunc {
+	defer func() {
+		if r := recover(); r != nil {
+			s.log.Errorf("callHandler %s panic: %v", f, r)
+		}
+	}()
 	handler := reflect.ValueOf(s.handler).MethodByName(f).Interface()
 	// 使用类型断言获取具体的函数
 	if sampleFunc, ok := handler.(func(c *gin.Context)); ok {
@@ -251,6 +256,11 @@ func (s *ApiServer) callHandler(f string) gin.HandlerFunc {
 
 // createWSHandler 创建 WebSocket 处理器
 func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
+	defer func() {
+		if r := recover(); r != nil {
+			s.log.Errorf("callWSHandler %s panic: %v", f, r)
+		}
+	}()
 	return func(c *gin.Context) {
 		// 获取客户端ID
 		clientID := c.Query("client_id")
