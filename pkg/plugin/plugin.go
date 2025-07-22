@@ -184,7 +184,7 @@ func (p *Plugin) AddPlugin(define *plugin.PluginDefinition) error {
 		logrus.Errorf("failed to marshal plugins: %+v", err)
 		return err
 	}
-	storage.RedisClient().Set(fmt.Sprintf("%s:%s", p.redisBaseKey, pluginsKey), string(data), 0)
+	storage.RedisClient().Set(fmt.Sprintf("%s%s", p.redisBaseKey, pluginsKey), string(data), 0)
 	return nil
 }
 
@@ -234,7 +234,7 @@ func (p *Plugin) DeletePlugin(name plugin.PluginName, version string) error {
 		logrus.Errorf("failed to delete plugin: %+v", err)
 		return err
 	}
-	storage.RedisClient().Set(fmt.Sprintf("%s:%s", p.redisBaseKey, pluginsKey), string(data), 0)
+	storage.RedisClient().Set(fmt.Sprintf("%s%s", p.redisBaseKey, pluginsKey), string(data), 0)
 	return nil
 }
 
@@ -288,7 +288,7 @@ func (p *Plugin) UpdatePlugin(name plugin.PluginName, version string, enabled bo
 		logrus.Errorf("failed to marshal plugins: %+v", err)
 		return err
 	}
-	storage.RedisClient().Set(fmt.Sprintf("%s:%s", p.redisBaseKey, pluginsKey), string(data), 0)
+	storage.RedisClient().Set(fmt.Sprintf("%s%s", p.redisBaseKey, pluginsKey), string(data), 0)
 	return nil
 }
 
