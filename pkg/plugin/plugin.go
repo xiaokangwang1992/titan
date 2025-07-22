@@ -93,23 +93,23 @@ func NewPlugin(ctx context.Context, opts ...PluginOption) *Plugin {
 	if p != nil {
 		return p
 	}
-	p := loadOptions(opts...)
-	if p.refresh == 0 {
-		p.refresh = 10
+	opt := loadOptions(opts...)
+	if opt.refresh == 0 {
+		opt.refresh = 10
 	}
-	if p.redisBaseKey == "" {
-		p.redisBaseKey = "plugins"
+	if opt.redisBaseKey == "" {
+		opt.redisBaseKey = "plugins"
 	}
 
 	p = &Plugin{
 		ctx:          ctx,
 		mu:           sync.RWMutex{},
-		refresh:      p.refresh,
-		redisBaseKey: p.redisBaseKey,
+		refresh:      opt.refresh,
+		redisBaseKey: opt.redisBaseKey,
 		pm: plugin.NewPluginManager(
-			ctx, plugin.WithPool(p.pool),
-			plugin.WithEvent(p.event),
-			plugin.WithConfig(p.conf),
+			ctx, plugin.WithPool(opt.pool),
+			plugin.WithEvent(opt.event),
+			plugin.WithConfig(opt.conf),
 		),
 	}
 	return p
