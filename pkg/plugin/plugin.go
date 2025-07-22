@@ -165,6 +165,11 @@ func (p *Plugin) AddPlugin(define *plugin.PluginDefinition) error {
 		logrus.Errorf("failed to get plugins: %+v", err)
 		return err
 	}
+	for _, plug := range pluginsCfgs[define.PluginName] {
+		if plug.Version == define.Version {
+			return fmt.Errorf("plugin: %s already exists", define.PluginName)
+		}
+	}
 	pluginsCfgs[define.PluginName] = append(pluginsCfgs[define.PluginName], plugin.PluginConfig{
 		Path:        define.PluginPath,
 		Version:     define.Version,
@@ -183,36 +188,28 @@ func (p *Plugin) AddPlugin(define *plugin.PluginDefinition) error {
 	return nil
 }
 
-func (p *Plugin) StopPlugin(name plugin.PluginName, version string) error {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	pluginsCfgs, err := p.getPlugins(pluginsKey)
-	if err != nil {
-		logrus.Errorf("failed to get plugins: %+v", err)
-		return err
-	}
-	for i, plug := range pluginsCfgs[name] {
-		if plug.Version == version {
-			pluginsCfgs[name][i] = plugin.PluginConfig{
-				Path:        plug.Path,
-				Version:     plug.Version,
-				Enabled:     false,
-				CreateAt:    plug.CreateAt,
-				Symbol:      plug.Symbol,
-				Description: plug.Description,
-				Config:      plug.Config,
-			}
-			break
-		}
-	}
-	data, err := json.Marshal(pluginsCfgs)
-	if err != nil {
-		logrus.Errorf("failed to marshal plugins: %+v", err)
-		return err
-	}
-	storage.RedisClient().Set(fmt.Sprintf("%s:%s", p.redisBaseKey, pluginsKey), string(data), 0)
-	return nil
-}
+// func (p *Plugin) StopPlugin(name plugin.PluginName, version string) error {
+// 	p.mu.RLock()
+// 	defer p.mu.RUnlock()
+// 	pluginsCfgs, err := p.getPlugins(pluginsKey)
+// 	if err != nil {
+// 		logrus.Errorf("failed to get plugins: %+v", err)
+// 		return err
+// 	}
+// 	for i, plug := range pluginsCfgs[name] {
+// 		if plug.Version == version {
+// 			pluginsCfgs[name][i].Enabled = false
+// 			break
+// 		}
+// 	}
+// 	data, err := json.Marshal(pluginsCfgs)
+// 	if err != nil {
+// 		logrus.Errorf("failed to marshal plugins: %+v", err)
+// 		return err
+// 	}
+// 	storage.RedisClient().Set(fmt.Sprintf("%s:%s", p.redisBaseKey, pluginsKey), string(data), 0)
+// 	return nil
+// }
 
 func (p *Plugin) DeletePlugin(name plugin.PluginName, version string) error {
 	p.mu.RLock()
@@ -281,15 +278,8 @@ func (p *Plugin) UpdatePlugin(name plugin.PluginName, version string, enabled bo
 			if cfg == nil {
 				cfg = plug.Config
 			}
-			pluginsCfgs[name][i] = plugin.PluginConfig{
-				Path:        plug.Path,
-				Version:     plug.Version,
-				Enabled:     enabled,
-				CreateAt:    plug.CreateAt,
-				Symbol:      plug.Symbol,
-				Description: plug.Description,
-				Config:      cfg,
-			}
+			pluginsCfgs[name][i].Enabled = enabled
+			pluginsCfgs[name][i].Config = cfg
 			break
 		}
 	}
