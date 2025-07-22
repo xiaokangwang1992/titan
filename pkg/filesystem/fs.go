@@ -14,6 +14,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
+	"strconv"
 
 	nurl "net/url"
 	"os"
@@ -447,4 +449,275 @@ func (u *FileSystem) getAbsPath(path string) string {
 	path = strings.TrimPrefix(path, "/")
 	// path = strings.TrimPrefix(path, ".")
 	return filepath.Join(u.baseDir, path)
+}
+
+// GetFileInfo validates and returns file information for download
+func (u *FileSystem) GetFileInfo(path, filename string) (string, os.FileInfo, error) {
+	absPath := u.getAbsPath(path)
+	fullPath := filepath.Join(absPath, filename)
+
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		return "", nil, fmt.Errorf("file %s not found", filename)
+	}
+
+	stat, err := os.Stat(fullPath)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to get file info: %v", err)
+	}
+
+	if stat.IsDir() {
+		return "", nil, fmt.Errorf("path is a directory, not a file")
+	}
+
+	return fullPath, stat, nil
+}
+
+// GetPathSize calculates the total size, file count, and directory count of a path
+func (u *FileSystem) GetPathSize(path string) (int64, int64, int64, error) {
+	absPath := u.getAbsPath(path)
+
+	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+		return 0, 0, 0, fmt.Errorf("path %s not found", path)
+	}
+
+	return u.calculateDirectorySize(absPath)
+}
+
+// calculateDirectorySize calculate directory size recursively
+func (u *FileSystem) calculateDirectorySize(dirPath string) (int64, int64, int64, error) {
+	var totalSize int64
+	var fileCount int64
+	var dirCount int64
+
+	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			dirCount++
+		} else {
+			fileCount++
+			totalSize += info.Size()
+		}
+
+		return nil
+	})
+
+	return totalSize, fileCount, dirCount, err
+}
+
+// FormatBytes format bytes to human readable format
+func (u *FileSystem) FormatBytes(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+// DownloadFile downloads a file from the filesystem with metadata handling
+func (u *FileSystem) DownloadFile(c *gin.Context, path, filename string) (int64, error) {
+	var (
+		meta    *FileMeta
+		err     error
+		absPath = u.getAbsPath(path)
+	)
+	defer func() {
+		if err := u.setFileMeta(absPath, filename, meta); err != nil {
+			u.logger.Errorf("set file meta failed: %s", err)
+		}
+	}()
+	u.logger.Infof("download file: %s, %s", path, filename)
+
+	// get file meta
+	if meta, err = u.getFileMeta(absPath, filename); err != nil {
+		u.logger.Warnf("meta file not found for %s, creating new meta", filename)
+		meta = &FileMeta{
+			MD5:     "",
+			Status:  "unknown",
+			Expired: 0,
+			Type:    "",
+		}
+	}
+
+	// check if file exists
+	fullPath := filepath.Join(absPath, filename)
+	info, err := os.Stat(fullPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, fmt.Errorf("file %s not found", filename)
+		}
+		return 0, fmt.Errorf("failed to get file info: %v", err)
+	}
+
+	// check if it is a directory
+	if info.IsDir() {
+		return 0, fmt.Errorf("path is a directory, not a file")
+	}
+
+	// update meta
+	meta.Status = "downloading"
+	meta.Expired = time.Now().Unix() + 3600 // 1 hour expired
+	if err := u.setFileMeta(absPath, filename, meta); err != nil {
+		return 0, fmt.Errorf("failed to update file meta: %v", err)
+	}
+
+	// check Range header (support range download)
+	rangeHeader := c.GetHeader("Range")
+	var start int64 = 0
+	var end int64 = info.Size() - 1
+
+	if rangeHeader != "" {
+		rangeMap, err := utils.ExtractByRegex(`^bytes=(?P<start>\d+)-(?P<end>\d*)$`, rangeHeader)
+		if err != nil || rangeMap == nil {
+			return 0, fmt.Errorf("invalid range header: %s", rangeHeader)
+		}
+
+		startVal := rangeMap["start"]
+		endVal := rangeMap["end"]
+
+		// handle start value
+		switch v := startVal.(type) {
+		case int:
+			start = int64(v)
+		case string:
+			start, err = strconv.ParseInt(v, 10, 64)
+			if err != nil {
+				return 0, fmt.Errorf("invalid start range: %s", v)
+			}
+		default:
+			return 0, fmt.Errorf("invalid start range type: %T", startVal)
+		}
+
+		// handle end value
+		if endVal != nil {
+			switch v := endVal.(type) {
+			case int:
+				end = int64(v)
+			case string:
+				if v != "" {
+					end, err = strconv.ParseInt(v, 10, 64)
+					if err != nil {
+						return 0, fmt.Errorf("invalid end range: %s", v)
+					}
+				}
+			default:
+				return 0, fmt.Errorf("invalid end range type: %T", endVal)
+			}
+		}
+
+		// validate range
+		if start < 0 || start >= info.Size() || end >= info.Size() || start > end {
+			return 0, fmt.Errorf("range out of bounds: %d-%d, file size: %d", start, end, info.Size())
+		}
+	}
+
+	// set response headers
+	contentLength := end - start + 1
+	c.Header("Content-Length", fmt.Sprintf("%d", contentLength))
+	c.Header("Content-Type", "application/octet-stream")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	c.Header("Accept-Ranges", "bytes")
+
+	if rangeHeader != "" {
+		c.Header("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, info.Size()))
+		c.Status(http.StatusPartialContent)
+	} else {
+		c.Status(http.StatusOK)
+	}
+
+	// execute download
+	downloadSize, err := u.downloadOSFile(c, absPath, filename, start, end)
+	if err != nil {
+		meta.Status = "download_failed"
+		return downloadSize, err
+	}
+
+	// update meta
+	meta.Status = "completed"
+	meta.Expired = time.Now().Unix() + 3600 // 1 hour expired
+
+	u.logger.Infof("file %s download completed: %d bytes", filename, downloadSize)
+	return downloadSize, nil
+}
+
+// downloadOSFile downloads a file with range support
+func (u *FileSystem) downloadOSFile(c *gin.Context, absPath, filename string, start, end int64) (int64, error) {
+	fullPath := filepath.Join(absPath, filename)
+
+	// open file
+	file, err := os.Open(fullPath)
+	if err != nil {
+		return 0, fmt.Errorf("open file failed: %v", err)
+	}
+	defer file.Close()
+
+	// if start is specified, jump to the specified position
+	if start > 0 {
+		_, err = file.Seek(start, io.SeekStart)
+		if err != nil {
+			return 0, fmt.Errorf("seek to position %d failed: %v", start, err)
+		}
+	}
+
+	var (
+		downloadSize int64
+		buffer       = make([]byte, u.config.FileUploader.BufferSize)
+		n            int
+		downloadMB   int64
+		remaining    = end - start + 1
+	)
+
+mainloop:
+	for {
+		select {
+		case <-u.ctx.Done():
+			u.logger.Infof("❌ server context canceled, download interrupted")
+			return downloadSize, fmt.Errorf("server context canceled")
+		case <-c.Request.Context().Done():
+			u.logger.Infof("❌ client context canceled, connection interrupted")
+			return downloadSize, fmt.Errorf("client connection interrupted")
+		default:
+			// calculate the size of the current read
+			readSize := int64(len(buffer))
+			if remaining < readSize {
+				readSize = remaining
+			}
+
+			if readSize <= 0 {
+				break mainloop
+			}
+
+			n, err = file.Read(buffer[:readSize])
+			if n > 0 {
+				written, writeErr := c.Writer.Write(buffer[:n])
+				if writeErr != nil {
+					return downloadSize, fmt.Errorf("write to response failed: %v", writeErr)
+				}
+				downloadSize += int64(written)
+				remaining -= int64(written)
+
+				// record download progress every 1MB
+				if downloadSize/(1024*1024) != downloadMB {
+					downloadMB = downloadSize / (1024 * 1024)
+					u.logger.Infof("📊 file %s download progress: %d MB", filename, downloadMB)
+				}
+			}
+			if err == io.EOF {
+				break mainloop
+			}
+			if err != nil {
+				return downloadSize, fmt.Errorf("read file failed: %v", err)
+			}
+		}
+	}
+
+	u.logger.Infof("file %s range download completed: %d bytes (%d-%d)", filename, downloadSize, start, end)
+	return downloadSize, nil
 }
