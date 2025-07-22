@@ -303,7 +303,7 @@ func (p *Plugin) getPlugins(key string) (map[plugin.PluginName][]plugin.PluginCo
 	if !rds.Exists(fmt.Sprintf("%s%s", p.redisBaseKey, key)) {
 		return make(map[plugin.PluginName][]plugin.PluginConfig), nil
 	}
-	plugins, err := rds.Get(fmt.Sprintf("%s:%s", p.redisBaseKey, key))
+	plugins, err := rds.Get(fmt.Sprintf("%s%s", p.redisBaseKey, key))
 	if err != nil {
 		return nil, err
 	}
