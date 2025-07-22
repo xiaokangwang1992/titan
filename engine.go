@@ -59,7 +59,14 @@ func NewTitan(ctx context.Context, app, logMode string) *Titan {
 		singal: make(chan os.Signal, 1),
 		log:    logrus.WithField("app", app),
 	}
-	pool, err := ants.NewPool(config.GetConfig().Ants.Size, func(opts *ants.Options) {
+	// 安全地获取Ants配置，如果为nil则使用默认值
+	antsConfig := config.GetConfig().Ants
+	poolSize := 100 // 默认值
+	if antsConfig != nil {
+		poolSize = antsConfig.Size
+	}
+
+	pool, err := ants.NewPool(poolSize, func(opts *ants.Options) {
 		opts.ExpiryDuration = 60 * time.Second
 		opts.Nonblocking = false
 		opts.PreAlloc = true
@@ -70,9 +77,16 @@ func NewTitan(ctx context.Context, app, logMode string) *Titan {
 		panic(err)
 	}
 	t.pool = pool
+	// 安全地获取Event配置，如果为nil则使用默认值
+	eventConfig := config.GetConfig().Event
+	msgSize := 1000 // 默认值
+	if eventConfig != nil {
+		msgSize = eventConfig.MsgSize
+	}
+
 	t.event = event.NewEvent(t.ctx, []event.EventOption{
 		event.WithConfig(&event.Config{
-			MsgSize: config.GetConfig().Event.MsgSize,
+			MsgSize: msgSize,
 		}),
 		event.WithPool(t.pool)}...)
 	signal.Notify(t.singal, syscall.SIGTERM)
