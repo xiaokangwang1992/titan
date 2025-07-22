@@ -156,7 +156,7 @@ func (t *Titan) Job(job *cron.Job) *Titan {
 	return t
 }
 
-func (t *Titan) Plugins(conf *config.Plugin) *Titan {
+func (t *Titan) Plugins(redisKey string, conf *config.Plugin) *Titan {
 	if conf == nil {
 		conf = &config.Plugin{
 			Refresh:          1,
@@ -170,7 +170,7 @@ func (t *Titan) Plugins(conf *config.Plugin) *Titan {
 		t.plugin = plugin.NewPlugin(
 			t.ctx,
 			plugin.WithRefresh(conf.Refresh),
-			plugin.WithRedisKey(conf.RedisKey),
+			plugin.WithRedisKey(redisKey),
 			plugin.WithPool(t.pool),
 			plugin.WithEvent(t.event),
 			plugin.WithConfig(&iplugin.PluginManagerConfig{
