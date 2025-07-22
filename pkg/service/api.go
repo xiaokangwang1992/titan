@@ -148,26 +148,22 @@ func (s *ApiServer) bindRouter(r *gin.RouterGroup) {
 			for _, r := range rs.Routers {
 				rs := strings.Split(r, ",")
 				if len(rs) != 3 {
-					s.log.Fatalf("route config error, route: %s", r)
+					panic(r + " route config error")
 				}
 				path := strings.TrimSpace(rs[0])
 				method := strings.TrimSpace(rs[1])
 				handler := strings.TrimSpace(rs[2])
-				callHandler := s.callHandler(handler)
-				if callHandler == nil {
-					s.log.Fatalf("handler %s not found, route: %s", handler, r)
-				}
 				switch strings.ToUpper(method) {
 				case "GET":
-					rg.GET(path, callHandler)
+					rg.GET(path, s.callHandler(handler))
 				case "POST":
-					rg.POST(path, callHandler)
+					rg.POST(path, s.callHandler(handler))
 				case "PUT":
-					rg.PUT(path, callHandler)
+					rg.PUT(path, s.callHandler(handler))
 				case "DELETE":
-					rg.DELETE(path, callHandler)
+					rg.DELETE(path, s.callHandler(handler))
 				default:
-					s.log.Fatalf("method %s not support, route: %s", method, r)
+					panic(r + " method not support")
 				}
 			}
 		}
@@ -177,7 +173,7 @@ func (s *ApiServer) bindRouter(r *gin.RouterGroup) {
 			for _, sse := range rs.Sses {
 				ss := strings.Split(sse, ",")
 				if len(ss) != 3 {
-					s.log.Fatalf("sse config error, route: %s", sse)
+					panic(sse + " sse config error")
 				}
 				path := strings.TrimSpace(ss[0])
 				method := strings.TrimSpace(ss[1])
@@ -188,7 +184,7 @@ func (s *ApiServer) bindRouter(r *gin.RouterGroup) {
 				case "POST":
 					rg.POST(path, s.callHandler(handler))
 				default:
-					s.log.Fatalf("method %s not support, route: %s", method, sse)
+					panic(sse + " method not support")
 				}
 			}
 		}
@@ -203,7 +199,7 @@ func (s *ApiServer) bindRouter(r *gin.RouterGroup) {
 			for _, ws := range rs.WebSockets {
 				wss := strings.Split(ws, ",")
 				if len(wss) != 2 {
-					s.log.Fatalf("websocket config error, route: %s", ws)
+					panic(ws + " websocket config error, format: path,handler")
 				}
 				path := strings.TrimSpace(wss[0])
 				handler := strings.TrimSpace(wss[1])
@@ -224,31 +220,41 @@ func (s *ApiServer) callMiddleware(ms []string, sse bool) (mfs []gin.HandlerFunc
 	}
 	for _, m := range ms {
 		if _, ok := s.middlewares[m]; !ok {
-			s.log.Fatalf("middleware %s in route not found in http config.", m)
+			panic("middleware in route not found in http config.")
 		}
 		args := s.middlewares[m]
 		m = strings.ToUpper(m[:1]) + m[1:] + "Middleware"
 		if reflect.ValueOf(s.middleware).Elem().FieldByName("Args").IsValid() {
 			reflect.ValueOf(s.middleware).Elem().FieldByName("Args").Set(reflect.ValueOf(args))
 		}
-		middleware := reflect.ValueOf(s.middleware).MethodByName(m).Interface()
+		method := reflect.ValueOf(s.middleware).MethodByName(m)
+		if !method.IsValid() {
+			panic("middleware " + m + " not found")
+		}
+		middleware := method.Interface()
 		if sampleFunc, ok := middleware.(func(c *gin.Context)); ok {
 			mfs = append(mfs, sampleFunc)
 		} else {
-			s.log.Fatalf("Conversion middlwware %s failed.", m)
+			panic("Conversion middlwware failed.")
 		}
 	}
 	return
 }
 
 func (s *ApiServer) callHandler(f string) gin.HandlerFunc {
-	handler := reflect.ValueOf(s.handler).MethodByName(f).Interface()
+	method := reflect.ValueOf(s.handler).MethodByName(f)
+	if !method.IsValid() {
+		panic("handler " + f + " not found")
+	}
+	handler := method.Interface()
+	// 使用类型断言获取具体的函数
 	if sampleFunc, ok := handler.(func(c *gin.Context)); ok {
+		// logrus.Debugf("[router] %-6s - %-16s %s", m, p, f)
+		// 调用具体的函数
 		return sampleFunc
 	} else {
-		s.log.Fatalf("Conversion handler %s failed, handler: %s", f, reflect.TypeOf(handler).String())
+		panic("Conversion handler failed.")
 	}
-	return nil
 }
 
 // createWSHandler 创建 WebSocket 处理器
