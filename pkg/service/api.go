@@ -220,7 +220,7 @@ func (s *ApiServer) callMiddleware(ms []string, sse bool) (mfs []gin.HandlerFunc
 	}
 	for _, m := range ms {
 		if _, ok := s.middlewares[m]; !ok {
-			panic("middleware in route not found in http config.")
+			panic("middleware " + m + " in route not found in http config.")
 		}
 		args := s.middlewares[m]
 		m = strings.ToUpper(m[:1]) + m[1:] + "Middleware"
@@ -231,18 +231,13 @@ func (s *ApiServer) callMiddleware(ms []string, sse bool) (mfs []gin.HandlerFunc
 		if sampleFunc, ok := middleware.(func(c *gin.Context)); ok {
 			mfs = append(mfs, sampleFunc)
 		} else {
-			panic("Conversion middlwware failed.")
+			panic("Conversion middlwware " + m + " failed.")
 		}
 	}
 	return
 }
 
 func (s *ApiServer) callHandler(f string) gin.HandlerFunc {
-	defer func() {
-		if r := recover(); r != nil {
-			s.log.Errorf("callHandler %s panic: %v", f, r)
-		}
-	}()
 	handler := reflect.ValueOf(s.handler).MethodByName(f).Interface()
 	// 使用类型断言获取具体的函数
 	if sampleFunc, ok := handler.(func(c *gin.Context)); ok {
@@ -250,17 +245,12 @@ func (s *ApiServer) callHandler(f string) gin.HandlerFunc {
 		// 调用具体的函数
 		return sampleFunc
 	} else {
-		panic("Conversion handler failed.")
+		panic("Conversion handler " + f + " failed.")
 	}
 }
 
 // createWSHandler 创建 WebSocket 处理器
 func (s *ApiServer) callWSHandler(f string) gin.HandlerFunc {
-	defer func() {
-		if r := recover(); r != nil {
-			s.log.Errorf("callWSHandler %s panic: %v", f, r)
-		}
-	}()
 	return func(c *gin.Context) {
 		// 获取客户端ID
 		clientID := c.Query("client_id")
