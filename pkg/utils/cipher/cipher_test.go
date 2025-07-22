@@ -205,7 +205,7 @@ func TestDecrypt(t *testing.T) {
 		Name string
 		text string
 	}{
-		{"a", ``},
+		{"a", `vfy0yEIACLkCnOheZ_IOZWkSYwgwg9AuYjTiozo8ps8`},
 		{"b", ""},
 		{"c", ""},
 	}

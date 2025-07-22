@@ -19,11 +19,12 @@ import (
 	"time"
 
 	"github.com/GMISWE/ieops-plugins/event"
-	"github.com/GMISWE/ieops-plugins/plugin"
+	iplugin "github.com/GMISWE/ieops-plugins/plugin"
 	"github.com/panjf2000/ants/v2"
 	"github.com/piaobeizu/titan/config"
 	"github.com/piaobeizu/titan/pkg/cron"
 	"github.com/piaobeizu/titan/pkg/log"
+	"github.com/piaobeizu/titan/pkg/plugin"
 	"github.com/piaobeizu/titan/pkg/service"
 	"github.com/piaobeizu/titan/pkg/utils"
 	"github.com/sirupsen/logrus"
@@ -36,7 +37,7 @@ type Titan struct {
 	scheduler *cron.Scheduler
 	event     *event.Event
 	pool      *ants.Pool
-	pm        *plugin.PluginManager
+	plugin    *plugin.Plugin
 	stop      chan struct{}
 	singal    chan os.Signal
 	log       *logrus.Entry
@@ -165,15 +166,20 @@ func (t *Titan) Plugins(conf *config.Plugin) *Titan {
 	if conf.GracefulShutdown == 0 {
 		conf.GracefulShutdown = 3
 	}
-	if t.pm == nil {
-		t.pm = plugin.NewPluginManager(t.ctx, []plugin.PluginManagerOption{
-			plugin.WithConfig(&plugin.PluginManagerConfig{
+	if t.plugin == nil {
+		t.plugin = plugin.NewPlugin(
+			t.ctx,
+			plugin.WithRefresh(conf.Refresh),
+			plugin.WithRedisKey(conf.RedisKey),
+			plugin.WithPool(t.pool),
+			plugin.WithEvent(t.event),
+			plugin.WithConfig(&iplugin.PluginManagerConfig{
 				GracefulShutdown: conf.GracefulShutdown,
 				EventSize:        config.GetConfig().Event.MsgSize,
 				PoolSize:         config.GetConfig().Ants.Size,
 				Md5Check:         conf.Md5Check,
 			}),
-			plugin.WithPool(t.pool)}...)
+		)
 	}
 	return t
 }
@@ -184,6 +190,9 @@ func (e *Titan) Start() {
 	}
 	if e.scheduler != nil {
 		e.scheduler.Start()
+	}
+	if e.plugin != nil {
+		e.plugin.Start()
 	}
 	select {
 	case <-e.ctx.Done():
@@ -202,8 +211,8 @@ func (e *Titan) Stop() {
 	if e.api != nil {
 		e.api.Stop()
 	}
-	if e.pm != nil {
-		e.pm.Stop()
+	if e.plugin != nil {
+		e.plugin.Stop()
 	}
 	e.log.Info("titan stopped, byebye!")
 }

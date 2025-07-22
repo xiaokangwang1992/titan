@@ -83,9 +83,10 @@ type Event struct {
 }
 
 type Plugin struct {
-	Refresh          int  `yaml:"refresh,omitempty"`
-	GracefulShutdown int  `yaml:"graceful-shutdown,omitempty"`
-	Md5Check         bool `yaml:"md5-check,omitempty"`
+	Refresh          int    `yaml:"refresh,omitempty"`
+	GracefulShutdown int    `yaml:"graceful-shutdown,omitempty"`
+	Md5Check         bool   `yaml:"md5-check,omitempty"`
+	RedisKey         string `yaml:"redis-key,omitempty"`
 }
 
 type Config struct {
