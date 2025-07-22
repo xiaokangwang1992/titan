@@ -126,7 +126,7 @@ func (p *Plugin) Start() {
 		case <-ticker.C:
 			pluginsCfgs, err := p.getPlugins(pluginsKey)
 			if err != nil {
-				logrus.Errorf("failed to get plugins: %+v", err)
+				logrus.Warnf("failed to get plugins: %+v", err)
 				continue
 			}
 			for name, plugins := range pluginsCfgs {
@@ -311,7 +311,6 @@ func (p *Plugin) getPlugins(key string) (map[plugin.PluginName][]plugin.PluginCo
 	rds := storage.RedisClient()
 	plugins, err := rds.Get(fmt.Sprintf("%s:%s", p.redisBaseKey, key))
 	if err != nil {
-		logrus.Errorf("failed to get plugins: %+v", err)
 		return nil, err
 	}
 	var cfg map[plugin.PluginName][]plugin.PluginConfig
