@@ -230,6 +230,89 @@ func (u *FileSystem) UploadFile(c *gin.Context, path, filename string, overwrite
 	return uploadSize, err
 }
 
+// SimpleUploadFile handles form multipart file uploads
+func (u *FileSystem) SimpleUploadFile(c *gin.Context, path string, overwrite bool, mode os.FileMode) (string, string, int64, error) {
+	var (
+		absPath = u.getAbsPath(path)
+		md5     string
+		size    int64
+	)
+
+	// 获取上传的文件
+	file, header, err := c.Request.FormFile(u.config.FileUploader.FormName)
+	if err != nil {
+		return "", "", 0, fmt.Errorf("get form file failed: %v", err)
+	}
+	defer file.Close()
+
+	filename := header.Filename
+	u.logger.Infof("uploading file: %s, size: %d bytes", filename, header.Size)
+
+	// 检查文件类型
+	contentType := header.Header.Get("Content-Type")
+	if contentType == "" {
+		// 如果没有Content-Type，尝试从文件扩展名推断
+		contentType = "application/octet-stream"
+	}
+
+	support := false
+	for _, fileType := range u.config.FileUploader.FileTypes {
+		if strings.HasPrefix(contentType, fileType) {
+			support = true
+			break
+		}
+	}
+	if !support {
+		return "", "", 0, fmt.Errorf("unsupported Content-Type: %s, we only support %s", contentType, strings.Join(u.config.FileUploader.FileTypes, ", "))
+	}
+
+	// 检查文件大小
+	if header.Size > u.config.FileUploader.FileMaxSize {
+		return "", "", 0, fmt.Errorf("file size exceeds the maximum limit: %d > %d", header.Size, u.config.FileUploader.FileMaxSize)
+	}
+
+	// 创建目录
+	if err := u.CreateDir(path, mode); err != nil {
+		return "", "", 0, fmt.Errorf("create directory failed: %v", err)
+	}
+
+	targetPath := filepath.Join(absPath, filename)
+
+	// 检查文件是否已存在
+	if !overwrite {
+		if _, err := os.Stat(targetPath); err == nil {
+			return "", "", 0, ErrFileAlreadyExists
+		}
+	}
+
+	if mode == 0 {
+		mode = u.config.FileUploader.PathMode
+	}
+
+	// 创建目标文件
+	dst, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
+	if err != nil {
+		return "", "", 0, fmt.Errorf("create target file failed: %v", err)
+	}
+	defer dst.Close()
+
+	// 直接复制文件内容
+	uploadSize, err := io.Copy(dst, file)
+	if err != nil {
+		return "", "", 0, fmt.Errorf("copy file failed: %v", err)
+	}
+
+	// 计算MD5
+	md5, err = utils.CalFileMD5(targetPath)
+	if err != nil {
+		return "", "", 0, fmt.Errorf("calculate file MD5 failed: %v", err)
+	}
+
+	size = uploadSize
+	u.logger.Infof("✅ file %s uploaded successfully, size: %d bytes, MD5: %s", filename, size, md5)
+	return filename, md5, size, nil
+}
+
 func (u *FileSystem) ListDir(path string, hidden bool) (items []map[string]any, err error) {
 	var (
 		absPath = u.getAbsPath(path)

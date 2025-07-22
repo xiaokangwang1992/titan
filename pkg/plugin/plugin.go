@@ -316,7 +316,6 @@ func (p *Plugin) getPlugins(key string) (map[plugin.PluginName][]plugin.PluginCo
 	var cfg map[plugin.PluginName][]plugin.PluginConfig
 	err = json.Unmarshal([]byte(plugins), &cfg)
 	if err != nil {
-		logrus.Errorf("failed to unmarshal plugins: %+v", err)
 		return nil, err
 	}
 	return cfg, nil
