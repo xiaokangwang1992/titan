@@ -86,9 +86,13 @@ type Plugin struct {
 
 var (
 	pluginsKey = "plugins"
+	p          *Plugin
 )
 
 func NewPlugin(ctx context.Context, opts ...PluginOption) *Plugin {
+	if p != nil {
+		return p
+	}
 	p := loadOptions(opts...)
 	if p.refresh == 0 {
 		p.refresh = 10
@@ -97,7 +101,7 @@ func NewPlugin(ctx context.Context, opts ...PluginOption) *Plugin {
 		p.redisBaseKey = "plugins"
 	}
 
-	return &Plugin{
+	p = &Plugin{
 		ctx:          ctx,
 		mu:           sync.RWMutex{},
 		refresh:      p.refresh,
@@ -108,6 +112,7 @@ func NewPlugin(ctx context.Context, opts ...PluginOption) *Plugin {
 			plugin.WithConfig(p.conf),
 		),
 	}
+	return p
 }
 
 func (p *Plugin) Start() {
