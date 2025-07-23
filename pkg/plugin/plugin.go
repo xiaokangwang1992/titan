@@ -118,11 +118,32 @@ func NewPlugin(ctx context.Context, opts ...PluginOption) *Plugin {
 func (p *Plugin) Start() {
 	pm := plugin.NewPluginManager(p.ctx)
 	ticker := time.NewTicker(time.Second * time.Duration(p.refresh))
+	ticker1 := time.NewTicker(time.Second * 5)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-p.ctx.Done():
 			return
+		case <-ticker1.C:
+			rts := p.pm.GetAllRuntimes()
+			runnings, stoppings, stopped, errs := 0, 0, 0, 0
+			for _, runtimes := range rts {
+				for _, plug := range runtimes {
+					if plug.State == "running" {
+						runnings++
+					}
+					if plug.State == "stopping" {
+						stoppings++
+					}
+					if plug.State == "stopped" {
+						stopped++
+					}
+					if plug.State == "error" {
+						errs++
+					}
+				}
+			}
+			logrus.Infof("plugin is running: %d, stopping: %d, stopped: %d, error: %d", runnings, stoppings, stopped, errs)
 		case <-ticker.C:
 			pluginsCfgs, err := p.getPlugins(pluginsKey)
 			if err != nil {
@@ -152,6 +173,7 @@ func (p *Plugin) Start() {
 					}
 				}
 			}
+			logrus.Infof("plugin is running: %+v", pluginsCfgs)
 		}
 	}
 }
