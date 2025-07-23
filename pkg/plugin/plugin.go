@@ -143,7 +143,7 @@ func (p *Plugin) Start() {
 					}
 				}
 			}
-			logrus.Infof("plugin is running: %d, stopping: %d, stopped: %d", runnings, stoppings, stopped)
+			logrus.Infof("plugin statistics - running: %d, stopping: %d, stopped: %d, error: %d", runnings, stoppings, stopped, errs)
 		case <-ticker.C:
 			pluginsCfgs, err := p.getPlugins(pluginsKey)
 			if err != nil {
