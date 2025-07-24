@@ -313,6 +313,10 @@ func (p *Plugin) UpdatePlugin(name plugin.PluginName, version string, enabled bo
 	return nil
 }
 
+func (p *Plugin) AddEventFunc(name event.EventName, action event.EventAction, f func(param any) error) {
+	p.pm.AddEventFunc(action, f)
+}
+
 func (p *Plugin) Stop() {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
