@@ -144,6 +144,7 @@ func (p *Plugin) Start() {
 				}
 			}
 			logrus.Infof("plugin statistics - running: %d, stopping: %d, stopped: %d, error: %d", runnings, stoppings, stopped, errs)
+			p.pm.Table()
 		case <-ticker.C:
 			pluginsCfgs, err := p.getPlugins(pluginsKey)
 			if err != nil {
@@ -166,7 +167,7 @@ func (p *Plugin) Start() {
 							continue
 						}
 					} else {
-						if err := pm.StopPlugin(name, plug.Version); err != nil {
+						if err := pm.StopPlugin(name, plug.Version); err != nil && err != plugin.ErrPluginNotFound {
 							logrus.Errorf("failed to stop plugin: %+v", err)
 							continue
 						}
