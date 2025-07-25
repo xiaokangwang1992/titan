@@ -127,20 +127,18 @@ func (p *Plugin) Start() {
 		case <-ticker1.C:
 			rts := p.pm.GetAllRuntimes()
 			runnings, stoppings, stopped, errs := 0, 0, 0, 0
-			for _, runtimes := range rts {
-				for _, plug := range runtimes {
-					if plug.State == "running" {
-						runnings++
-					}
-					if plug.State == "stopping" {
-						stoppings++
-					}
-					if plug.State == "stopped" {
-						stopped++
-					}
-					if plug.State == "error" {
-						errs++
-					}
+			for _, runtime := range rts {
+				if runtime.State == "running" {
+					runnings++
+				}
+				if runtime.State == "stopping" {
+					stoppings++
+				}
+				if runtime.State == "stopped" {
+					stopped++
+				}
+				if runtime.State == "error" {
+					errs++
 				}
 			}
 			logrus.Infof("plugin statistics - running: %d, stopping: %d, stopped: %d, error: %d", runnings, stoppings, stopped, errs)
@@ -281,7 +279,7 @@ func (p *Plugin) ListPlugins() (map[plugin.PluginName][]PluginRuntime, error) {
 				Symbol:      plug.Symbol,
 				Description: plug.Description,
 				Config:      plug.Config,
-				State:       allRuntimes[name][plug.Version].State,
+				State:       allRuntimes[plugin.MakeMapKey(name, plug.Version)].State,
 			})
 		}
 	}
