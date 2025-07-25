@@ -14,6 +14,12 @@ github.com/GMISWE/ieops-plugins v0.0.0-20250725070838-defe53e2f4e0 h1:jI3mh6PDWI
 github.com/GMISWE/ieops-plugins v0.0.0-20250725070838-defe53e2f4e0/go.mod h1:414Oyb+QfUsBOtVwiS9Z0rjDq0OsTe4nT5kzX53sCkg=
 github.com/GMISWE/ieops-plugins v0.0.0-20250725081801-05fd0abbf2bd h1:Bc3Es3A5lyoJYLhNORAhz2E+Xxl/IZyipM3KUeNcjvY=
 github.com/GMISWE/ieops-plugins v0.0.0-20250725081801-05fd0abbf2bd/go.mod h1:414Oyb+QfUsBOtVwiS9Z0rjDq0OsTe4nT5kzX53sCkg=
+github.com/GMISWE/ieops-plugins v0.0.0-20250725083306-ce0926814f73 h1:xDspfFnzhA1B4+UT018uTHzVyKMTgPaJKYA7V5zQoZw=
+github.com/GMISWE/ieops-plugins v0.0.0-20250725083306-ce0926814f73/go.mod h1:414Oyb+QfUsBOtVwiS9Z0rjDq0OsTe4nT5kzX53sCkg=
+github.com/GMISWE/ieops-plugins v0.0.0-20250725083408-6640879a5d2e h1:8kLtUlKIyzdZTP9ydyHQa3vMM/7vA1gcGbv0RD91z9w=
+github.com/GMISWE/ieops-plugins v0.0.0-20250725083408-6640879a5d2e/go.mod h1:414Oyb+QfUsBOtVwiS9Z0rjDq0OsTe4nT5kzX53sCkg=
+github.com/GMISWE/ieops-plugins v0.0.0-20250725084409-208b34cdb21d h1:O+RIjYROvBq85AwcYRjuF/2UOz5NRfTrpQgrj1ijFH4=
+github.com/GMISWE/ieops-plugins v0.0.0-20250725084409-208b34cdb21d/go.mod h1:414Oyb+QfUsBOtVwiS9Z0rjDq0OsTe4nT5kzX53sCkg=
 github.com/aws/aws-sdk-go v1.55.5 h1:KKUZBfBoyqy5d3swXyiC7Q76ic40rYcbqH7qjh59kzU=
 github.com/aws/aws-sdk-go v1.55.5/go.mod h1:eRwEWoyTWFMVYVQzKMNHWP5/RV4xIUGMQfXQHfHkpNU=
 github.com/bsm/ginkgo/v2 v2.12.0 h1:Ny8MWAHyOepLGlLKYmXG4IEkioBysk6GpaRTLC8zwWs=

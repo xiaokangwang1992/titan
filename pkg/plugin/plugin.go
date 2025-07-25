@@ -158,6 +158,7 @@ func (p *Plugin) Start() {
 							PluginName:  name,
 							PluginPath:  plug.Path,
 							Version:     plug.Version,
+							Graceful:    plug.Graceful,
 							ModifyAt:    plug.CreateAt,
 							SymbolName:  plug.Symbol,
 							Description: plug.Description,
