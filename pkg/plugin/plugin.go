@@ -295,6 +295,7 @@ func (p *Plugin) UpdatePlugin(name plugin.PluginName, version string, enabled bo
 		logrus.Errorf("failed to get plugins: %+v", err)
 		return err
 	}
+	exist := false
 	for i, plug := range pluginsCfgs[name] {
 		if plug.Version == version {
 			if cfg == nil {
@@ -302,8 +303,12 @@ func (p *Plugin) UpdatePlugin(name plugin.PluginName, version string, enabled bo
 			}
 			pluginsCfgs[name][i].Enabled = enabled
 			pluginsCfgs[name][i].Config = cfg
+			exist = true
 			break
 		}
+	}
+	if !exist {
+		return plugin.ErrPluginNotFound
 	}
 	data, err := json.Marshal(pluginsCfgs)
 	if err != nil {
