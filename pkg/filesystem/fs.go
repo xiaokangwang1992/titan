@@ -554,6 +554,50 @@ func (u *FileSystem) GetFileInfo(path, filename string) (string, os.FileInfo, er
 	return fullPath, stat, nil
 }
 
+// calculateDirectorySizeIgnoreHidden recursively calculates directory size, ignoring hidden files/dirs (starting with '.')
+func (u *FileSystem) calculateDirectorySizeIgnoreHidden(dirPath string) (int64, int64, int64, error) {
+	var totalSize int64
+	var fileCount int64
+	var dirCount int64
+
+	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Ignore hidden files and directories (name starts with '.')
+		name := info.Name()
+		if len(name) > 0 && name[0] == '.' {
+			if info.IsDir() {
+				return filepath.SkipDir // skip this directory and its contents
+			}
+			return nil // skip this file
+		}
+
+		if info.IsDir() {
+			dirCount++
+		} else {
+			fileCount++
+			totalSize += info.Size()
+		}
+
+		return nil
+	})
+
+	return totalSize, fileCount, dirCount, err
+}
+
+// GetPathSizeIgnoreHidden calculates the total size, file count, and directory count of a path, ignoring hidden files/dirs
+func (u *FileSystem) GetPathSizeIgnoreHidden(path string) (int64, int64, int64, error) {
+	absPath := u.getAbsPath(path)
+
+	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+		return 0, 0, 0, fmt.Errorf("path %s not found", path)
+	}
+
+	return u.calculateDirectorySizeIgnoreHidden(absPath)
+}
+
 // GetPathSize calculates the total size, file count, and directory count of a path
 func (u *FileSystem) GetPathSize(path string) (int64, int64, int64, error) {
 	absPath := u.getAbsPath(path)
