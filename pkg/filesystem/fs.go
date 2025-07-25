@@ -599,11 +599,15 @@ func (u *FileSystem) GetPathSizeIgnoreHidden(path string) (int64, int64, int64, 
 }
 
 // GetPathSize calculates the total size, file count, and directory count of a path
-func (u *FileSystem) GetPathSize(path string) (int64, int64, int64, error) {
+func (u *FileSystem) GetPathSize(path string, ignoreHidden bool) (int64, int64, int64, error) {
 	absPath := u.getAbsPath(path)
 
 	if _, err := os.Stat(absPath); os.IsNotExist(err) {
 		return 0, 0, 0, fmt.Errorf("path %s not found", path)
+	}
+
+	if ignoreHidden {
+		return u.calculateDirectorySizeIgnoreHidden(absPath)
 	}
 
 	return u.calculateDirectorySize(absPath)
