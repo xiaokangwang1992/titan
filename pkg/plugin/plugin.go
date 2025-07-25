@@ -323,6 +323,27 @@ func (p *Plugin) AddEventFunc(name event.EventName, action event.EventAction, f 
 	p.pm.AddEventFunc(action, f)
 }
 
+func (p *Plugin) GetPluginMeta(name plugin.PluginName, version string) ([]plugin.PluginMeta, error) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	pluginCfgs, err := p.getPlugins(pluginsKey)
+	if err != nil {
+		logrus.Errorf("failed to get plugins: %+v", err)
+		return nil, err
+	}
+	for _, plug := range pluginCfgs[name] {
+		if plug.Version == version {
+			metas, err := p.pm.GetPluginMeta(name, version)
+			if err != nil {
+				logrus.Errorf("failed to load plugin: %+v", err)
+				return nil, err
+			}
+			return metas, nil
+		}
+	}
+	return nil, plugin.ErrPluginNotFound
+}
+
 func (p *Plugin) Stop() {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
