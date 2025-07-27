@@ -48,6 +48,8 @@ github.com/GMISWE/ieops-plugins v0.0.0-20250727033315-a9085bee8392 h1:39k+dyhSd7
 github.com/GMISWE/ieops-plugins v0.0.0-20250727033315-a9085bee8392/go.mod h1:414Oyb+QfUsBOtVwiS9Z0rjDq0OsTe4nT5kzX53sCkg=
 github.com/GMISWE/ieops-plugins v0.0.0-20250727062820-f7bcaade93c4 h1:Oc9GTuJmtV2RzDBwg33tSpiozpDsYyZGG9/xNn4M2e0=
 github.com/GMISWE/ieops-plugins v0.0.0-20250727062820-f7bcaade93c4/go.mod h1:414Oyb+QfUsBOtVwiS9Z0rjDq0OsTe4nT5kzX53sCkg=
+github.com/GMISWE/ieops-plugins v0.0.0-20250727145433-4bddd8180a6b h1:nylkhg2XofUBqoXjyrT4YnPfvrTES5mHLQaEMj3TvyI=
+github.com/GMISWE/ieops-plugins v0.0.0-20250727145433-4bddd8180a6b/go.mod h1:414Oyb+QfUsBOtVwiS9Z0rjDq0OsTe4nT5kzX53sCkg=
 github.com/aws/aws-sdk-go v1.55.5 h1:KKUZBfBoyqy5d3swXyiC7Q76ic40rYcbqH7qjh59kzU=
 github.com/aws/aws-sdk-go v1.55.5/go.mod h1:eRwEWoyTWFMVYVQzKMNHWP5/RV4xIUGMQfXQHfHkpNU=
 github.com/bsm/ginkgo/v2 v2.12.0 h1:Ny8MWAHyOepLGlLKYmXG4IEkioBysk6GpaRTLC8zwWs=

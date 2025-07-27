@@ -128,16 +128,16 @@ func (p *Plugin) Start() {
 			rts := p.pm.GetAllRuntimes()
 			runnings, stoppings, stopped, errs := 0, 0, 0, 0
 			for _, runtime := range rts {
-				if runtime.State == "running" {
+				if runtime.GetStateName() == "running" {
 					runnings++
 				}
-				if runtime.State == "stopping" {
+				if runtime.GetStateName() == "stopping" {
 					stoppings++
 				}
-				if runtime.State == "stopped" {
+				if runtime.GetStateName() == "stopped" {
 					stopped++
 				}
-				if runtime.State == "error" {
+				if runtime.GetStateName() == "error" {
 					errs++
 				}
 			}
@@ -274,7 +274,7 @@ func (p *Plugin) ListPlugins() (map[plugin.PluginName][]PluginRuntime, error) {
 			// 安全地获取插件状态，避免空指针访问
 			var state string
 			if runtime, exists := allRuntimes[plugin.GetUniqueKey(name, plug.Version)]; exists {
-				state = runtime.State
+				state = runtime.GetStateName()
 			} else {
 				state = "stopped" // 如果运行时不存在，默认为停止状态
 			}
