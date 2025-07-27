@@ -128,16 +128,16 @@ func (p *Plugin) Start() {
 			rts := p.pm.GetAllRuntimes()
 			runnings, stoppings, stopped, errs := 0, 0, 0, 0
 			for _, runtime := range rts {
-				if runtime.GetStateName() == "running" {
+				if runtime.GetState() == "running" {
 					runnings++
 				}
-				if runtime.GetStateName() == "stopping" {
+				if runtime.GetState() == "stopping" {
 					stoppings++
 				}
-				if runtime.GetStateName() == "stopped" {
+				if runtime.GetState() == "stopped" {
 					stopped++
 				}
-				if runtime.GetStateName() == "error" {
+				if runtime.GetState() == "error" {
 					errs++
 				}
 			}
@@ -259,7 +259,7 @@ func (p *Plugin) DeletePlugin(name plugin.PluginName, version string) error {
 	return nil
 }
 
-func (p *Plugin) ListPlugins() (map[plugin.PluginName][]PluginRuntime, error) {
+func (p *Plugin) ListPlugins() (map[plugin.PluginName][]*PluginRuntime, error) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	pluginCfgs, err := p.getPlugins(pluginsKey)
@@ -268,18 +268,18 @@ func (p *Plugin) ListPlugins() (map[plugin.PluginName][]PluginRuntime, error) {
 		return nil, err
 	}
 	allRuntimes := p.pm.GetAllRuntimes()
-	pluginRuntimes := make(map[plugin.PluginName][]PluginRuntime)
+	pluginRuntimes := make(map[plugin.PluginName][]*PluginRuntime)
 	for name, plugins := range pluginCfgs {
 		for _, plug := range plugins {
 			// 安全地获取插件状态，避免空指针访问
 			var state string
 			if runtime, exists := allRuntimes[plugin.GetUniqueKey(name, plug.Version)]; exists {
-				state = runtime.GetStateName()
+				state = runtime.GetState()
 			} else {
 				state = "stopped" // 如果运行时不存在，默认为停止状态
 			}
 
-			pluginRuntimes[name] = append(pluginRuntimes[name], PluginRuntime{
+			pluginRuntimes[name] = append(pluginRuntimes[name], &PluginRuntime{
 				Path:        plug.Path,
 				Version:     plug.Version,
 				Enabled:     plug.Enabled,
