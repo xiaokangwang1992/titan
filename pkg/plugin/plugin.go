@@ -271,6 +271,14 @@ func (p *Plugin) ListPlugins() (map[plugin.PluginName][]PluginRuntime, error) {
 	pluginRuntimes := make(map[plugin.PluginName][]PluginRuntime)
 	for name, plugins := range pluginCfgs {
 		for _, plug := range plugins {
+			// 安全地获取插件状态，避免空指针访问
+			var state string
+			if runtime, exists := allRuntimes[plugin.GetUniqueKey(name, plug.Version)]; exists {
+				state = runtime.State
+			} else {
+				state = "stopped" // 如果运行时不存在，默认为停止状态
+			}
+
 			pluginRuntimes[name] = append(pluginRuntimes[name], PluginRuntime{
 				Path:        plug.Path,
 				Version:     plug.Version,
@@ -279,7 +287,7 @@ func (p *Plugin) ListPlugins() (map[plugin.PluginName][]PluginRuntime, error) {
 				Symbol:      plug.Symbol,
 				Description: plug.Description,
 				Config:      plug.Config,
-				State:       allRuntimes[plugin.MakeMapKey(name, plug.Version)].State,
+				State:       state,
 			})
 		}
 	}
