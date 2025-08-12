@@ -90,6 +90,127 @@ func NewFileSystem(ctx context.Context, baseDir string, config *config.FileSyste
 	}
 }
 
+// getFileMimeType returns the MIME type of a file based on its extension
+func (u *FileSystem) getFileMimeType(filename string) string {
+	ext := strings.ToLower(filepath.Ext(filename))
+	switch ext {
+	// Image types
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".png":
+		return "image/png"
+	case ".gif":
+		return "image/gif"
+	case ".webp":
+		return "image/webp"
+	case ".bmp":
+		return "image/bmp"
+	case ".svg":
+		return "image/svg+xml"
+	case ".ico":
+		return "image/x-icon"
+	case ".tiff", ".tif":
+		return "image/tiff"
+
+	// Video types
+	case ".mp4":
+		return "video/mp4"
+	case ".avi":
+		return "video/x-msvideo"
+	case ".mov":
+		return "video/quicktime"
+	case ".wmv":
+		return "video/x-ms-wmv"
+	case ".flv":
+		return "video/x-flv"
+	case ".webm":
+		return "video/webm"
+	case ".mkv":
+		return "video/x-matroska"
+	case ".m4v":
+		return "video/x-m4v"
+	case ".3gp":
+		return "video/3gpp"
+	case ".ogv":
+		return "video/ogg"
+
+	// Audio types
+	case ".mp3":
+		return "audio/mpeg"
+	case ".wav":
+		return "audio/wav"
+	case ".ogg":
+		return "audio/ogg"
+	case ".flac":
+		return "audio/flac"
+	case ".aac":
+		return "audio/aac"
+	case ".wma":
+		return "audio/x-ms-wma"
+
+	// Document types
+	case ".pdf":
+		return "application/pdf"
+	case ".txt":
+		return "text/plain"
+	case ".html", ".htm":
+		return "text/html"
+	case ".css":
+		return "text/css"
+	case ".js":
+		return "application/javascript"
+	case ".json":
+		return "application/json"
+	case ".xml":
+		return "application/xml"
+
+	// Archive types
+	case ".zip":
+		return "application/zip"
+	case ".rar":
+		return "application/x-rar-compressed"
+	case ".7z":
+		return "application/x-7z-compressed"
+	case ".tar":
+		return "application/x-tar"
+	case ".gz":
+		return "application/gzip"
+	case ".bz2":
+		return "application/x-bzip2"
+
+	// Default to binary
+	default:
+		return "application/octet-stream"
+	}
+}
+
+// isPreviewableFile checks if the file can be previewed in browser
+func (u *FileSystem) isPreviewableFile(mimeType string) bool {
+	previewableTypes := []string{
+		// Images
+		"image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp",
+		"image/svg+xml", "image/x-icon", "image/tiff",
+		// Videos
+		"video/mp4", "video/x-msvideo", "video/quicktime", "video/x-ms-wmv",
+		"video/x-flv", "video/webm", "video/x-matroska", "video/x-m4v",
+		"video/3gpp", "video/ogg",
+		// Audio
+		"audio/mpeg", "audio/wav", "audio/ogg", "audio/flac", "audio/aac", "audio/x-ms-wma",
+		// Text files
+		"text/plain", "text/html", "text/css", "application/javascript",
+		"application/json", "application/xml",
+		// PDF
+		"application/pdf",
+	}
+
+	for _, t := range previewableTypes {
+		if mimeType == t {
+			return true
+		}
+	}
+	return false
+}
+
 func (u *FileSystem) GenerateUploadURL(url, path, filename, secret string, pathParams []PathParams) (string, error) {
 	var (
 		meta       *FileMeta
@@ -751,9 +872,20 @@ func (u *FileSystem) DownloadFile(c *gin.Context, path, filename string) (int64,
 	// set response headers
 	contentLength := end - start + 1
 	c.Header("Content-Length", fmt.Sprintf("%d", contentLength))
-	c.Header("Content-Type", "application/octet-stream")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
 	c.Header("Accept-Ranges", "bytes")
+
+	// determine content type and disposition based on file type
+	mimeType := u.getFileMimeType(filename)
+	c.Header("Content-Type", mimeType)
+
+	// check if file can be previewed in browser
+	if u.isPreviewableFile(mimeType) {
+		// For previewable files (images, videos, audio, text, PDF), set inline disposition
+		c.Header("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", filename))
+	} else {
+		// For binary files, set attachment disposition to force download
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	}
 
 	if rangeHeader != "" {
 		c.Header("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, info.Size()))
