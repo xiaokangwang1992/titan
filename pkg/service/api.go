@@ -19,6 +19,8 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/piaobeizu/titan/config"
 	"github.com/sirupsen/logrus"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 type ApiServer struct {
@@ -97,6 +99,12 @@ func (s *ApiServer) Start() {
 		rg = rg.Group("/" + s.version)
 	}
 	s.bindRouter(rg)
+
+	if config.GetConfig().Http.Swagger {
+		s.log.Info("enabling Swagger documentation")
+		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	}
+
 	r.GET("/healthz", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status": "ok",

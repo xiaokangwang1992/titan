@@ -2,13 +2,14 @@ mode: release
 log-mode: debug
 http:
   api-addr: ":8082"
+  version: "v1"
+  swagger: true  # enable Swagger documentation
   routes: 
     demo:
       middlewares:
         - default
       routers:
         - /demo,    POST,   Login
-  swagger: true
   middlewares:
     default: {}
 mysql: ""
