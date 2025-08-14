@@ -298,7 +298,7 @@ func (p *Plugin) ListPlugins() (map[plugin.PluginName][]*PluginRuntime, error) {
 func (p *Plugin) UpdatePlugin(name plugin.PluginName, version string, enabled bool, cfg any) error {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	pluginsCfgs, err := p.getPlugins(pluginsKey)
+	pluginsCfgs, err := p.GetPluginsFromRedis(pluginsKey)
 	if err != nil {
 		logrus.Errorf("failed to get plugins: %+v", err)
 		return err
@@ -364,7 +364,7 @@ func (p *Plugin) Stop() {
 	p.pm.Stop()
 }
 
-func (p *Plugin) getPlugins(key string) (map[plugin.PluginName][]plugin.PluginConfig, error) {
+func (p *Plugin) GetPluginsFromRedis(key string) (map[plugin.PluginName][]plugin.PluginConfig, error) {
 	rds := storage.RedisClient()
 	if !rds.Exists(fmt.Sprintf("%s%s", p.redisBaseKey, key)) {
 		return make(map[plugin.PluginName][]plugin.PluginConfig), nil
