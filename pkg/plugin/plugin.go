@@ -206,6 +206,7 @@ func (p *Plugin) AddPlugin(define *plugin.PluginDefinition) error {
 		CreateAt:    define.ModifyAt,
 		Symbol:      define.SymbolName,
 		Description: define.Description,
+		Md5:         define.Md5,
 		Config:      define.Config,
 	})
 	data, err := yaml.Marshal(pluginsCfgs)
