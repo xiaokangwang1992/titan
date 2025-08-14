@@ -187,6 +187,10 @@ func (p *Plugin) AddPlugin(define *plugin.PluginDefinition) error {
 		logrus.Errorf("failed to get plugins: %+v", err)
 		return err
 	}
+	// Defensive check to ensure pluginsCfgs is not nil
+	if pluginsCfgs == nil {
+		pluginsCfgs = make(map[plugin.PluginName][]plugin.PluginConfig)
+	}
 	for _, plug := range pluginsCfgs[define.PluginName] {
 		if plug.Version == define.Version {
 			return fmt.Errorf("plugin: %s already exists", define.PluginName)
@@ -387,16 +391,13 @@ func (p *Plugin) GetPluginsFromRedis(key string) (map[plugin.PluginName][]plugin
 			}
 			rds.Set(fmt.Sprintf("%s%s", p.redisBaseKey, key), string(psStr), 0)
 			plugins = string(psStr)
+			// Continue to unmarshal the empty plugins map
 		} else {
 			logrus.Errorf("failed to get plugins: %+v", err)
 			return nil, err
 		}
-		return nil, err
 	}
 	var cfg map[plugin.PluginName][]plugin.PluginConfig
 	err = yaml.Unmarshal([]byte(plugins), &cfg)
-	if err != nil {
-		return nil, err
-	}
-	return cfg, nil
+	return cfg, err
 }
