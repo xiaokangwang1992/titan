@@ -358,12 +358,8 @@ func (p *Plugin) GetPluginLogs(name plugin.PluginName, version string, taskID st
 	return p.pm.GetPluginLogs(name, version, taskID, log)
 }
 
-func (p *Plugin) StartPlugin(define *plugin.PluginDefinition) error {
-	return p.pm.StartPlugin(define)
-}
-
-func (p *Plugin) StopPlugin(name plugin.PluginName, version string) error {
-	return p.pm.StopPlugin(name, version)
+func (p *Plugin) GetPluginManager() *plugin.PluginManager {
+	return p.pm
 }
 
 func (p *Plugin) Stop() {
