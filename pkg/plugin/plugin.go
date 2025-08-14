@@ -145,7 +145,7 @@ func (p *Plugin) Start() {
 			logrus.Infof("plugin statistics - running: %d, stopping: %d, stopped: %d, error: %d", runnings, stoppings, stopped, errs)
 			p.pm.Table()
 		case <-ticker.C:
-			pluginsCfgs, err := p.getPlugins(pluginsKey)
+			pluginsCfgs, err := p.GetPluginsFromRedis(pluginsKey)
 			if err != nil {
 				logrus.Warnf("failed to get plugins: %+v", err)
 				continue
@@ -182,7 +182,7 @@ func (p *Plugin) AddPlugin(define *plugin.PluginDefinition) error {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
-	pluginsCfgs, err := p.getPlugins(pluginsKey)
+	pluginsCfgs, err := p.GetPluginsFromRedis(pluginsKey)
 	if err != nil {
 		logrus.Errorf("failed to get plugins: %+v", err)
 		return err
@@ -236,7 +236,7 @@ func (p *Plugin) AddPlugin(define *plugin.PluginDefinition) error {
 func (p *Plugin) DeletePlugin(name plugin.PluginName, version string) error {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	pluginsCfgs, err := p.getPlugins(pluginsKey)
+	pluginsCfgs, err := p.GetPluginsFromRedis(pluginsKey)
 	if err != nil {
 		logrus.Errorf("failed to get plugins: %+v", err)
 		return err
@@ -263,7 +263,7 @@ func (p *Plugin) DeletePlugin(name plugin.PluginName, version string) error {
 func (p *Plugin) ListPlugins() (map[plugin.PluginName][]*PluginRuntime, error) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	pluginCfgs, err := p.getPlugins(pluginsKey)
+	pluginCfgs, err := p.GetPluginsFromRedis(pluginsKey)
 	if err != nil {
 		logrus.Errorf("failed to get plugins: %+v", err)
 		return nil, err
@@ -334,7 +334,7 @@ func (p *Plugin) AddEventFunc(name event.EventName, action event.EventAction, f 
 func (p *Plugin) GetPluginMeta(name plugin.PluginName, version string) ([]plugin.PluginMeta, error) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	pluginCfgs, err := p.getPlugins(pluginsKey)
+	pluginCfgs, err := p.GetPluginsFromRedis(pluginsKey)
 	if err != nil {
 		logrus.Errorf("failed to get plugins: %+v", err)
 		return nil, err
