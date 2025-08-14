@@ -192,6 +192,9 @@ func (p *Plugin) AddPlugin(define *plugin.PluginDefinition) error {
 			return fmt.Errorf("plugin: %s already exists", define.PluginName)
 		}
 	}
+	if _, ok := pluginsCfgs[define.PluginName]; !ok {
+		pluginsCfgs[define.PluginName] = make([]plugin.PluginConfig, 0)
+	}
 	pluginsCfgs[define.PluginName] = append(pluginsCfgs[define.PluginName], plugin.PluginConfig{
 		Path:        define.PluginPath,
 		Version:     define.Version,
