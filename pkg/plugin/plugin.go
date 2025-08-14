@@ -191,24 +191,35 @@ func (p *Plugin) AddPlugin(define *plugin.PluginDefinition) error {
 	if pluginsCfgs == nil {
 		pluginsCfgs = make(map[plugin.PluginName][]plugin.PluginConfig)
 	}
-	for _, plug := range pluginsCfgs[define.PluginName] {
+	index := -1
+	for i, plug := range pluginsCfgs[define.PluginName] {
 		if plug.Version == define.Version {
-			return fmt.Errorf("plugin: %s already exists", define.PluginName)
+			index = i
 		}
 	}
-	if _, ok := pluginsCfgs[define.PluginName]; !ok {
-		pluginsCfgs[define.PluginName] = make([]plugin.PluginConfig, 0)
+	if index != -1 {
+		pluginsCfgs[define.PluginName][index].Path = define.PluginPath
+		pluginsCfgs[define.PluginName][index].Version = define.Version
+		pluginsCfgs[define.PluginName][index].Enabled = true
+		pluginsCfgs[define.PluginName][index].Config = define.Config
+		pluginsCfgs[define.PluginName][index].Md5 = define.Md5
+		pluginsCfgs[define.PluginName][index].CreateAt = define.ModifyAt
+		pluginsCfgs[define.PluginName][index].Symbol = define.SymbolName
+		pluginsCfgs[define.PluginName][index].Description = define.Description
+		return nil
+	} else {
+		pluginsCfgs[define.PluginName] = append(pluginsCfgs[define.PluginName], plugin.PluginConfig{
+			Path:        define.PluginPath,
+			Version:     define.Version,
+			Enabled:     true,
+			CreateAt:    define.ModifyAt,
+			Symbol:      define.SymbolName,
+			Description: define.Description,
+			Md5:         define.Md5,
+			Config:      define.Config,
+		})
 	}
-	pluginsCfgs[define.PluginName] = append(pluginsCfgs[define.PluginName], plugin.PluginConfig{
-		Path:        define.PluginPath,
-		Version:     define.Version,
-		Enabled:     true,
-		CreateAt:    define.ModifyAt,
-		Symbol:      define.SymbolName,
-		Description: define.Description,
-		Md5:         define.Md5,
-		Config:      define.Config,
-	})
+
 	data, err := yaml.Marshal(pluginsCfgs)
 	if err != nil {
 		logrus.Errorf("failed to marshal plugins: %+v", err)
