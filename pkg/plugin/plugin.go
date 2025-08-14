@@ -10,7 +10,6 @@ package plugin
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -247,7 +246,7 @@ func (p *Plugin) DeletePlugin(name plugin.PluginName, version string) error {
 			break
 		}
 	}
-	data, err := json.Marshal(pluginsCfgs)
+	data, err := yaml.Marshal(pluginsCfgs)
 	if err != nil {
 		logrus.Errorf("failed to marshal plugins: %+v", err)
 		return err
@@ -318,7 +317,7 @@ func (p *Plugin) UpdatePlugin(name plugin.PluginName, version string, enabled bo
 	if !exist {
 		return plugin.ErrPluginNotFound
 	}
-	data, err := json.Marshal(pluginsCfgs)
+	data, err := yaml.Marshal(pluginsCfgs)
 	if err != nil {
 		logrus.Errorf("failed to marshal plugins: %+v", err)
 		return err
@@ -374,7 +373,7 @@ func (p *Plugin) getPlugins(key string) (map[plugin.PluginName][]plugin.PluginCo
 		return nil, err
 	}
 	var cfg map[plugin.PluginName][]plugin.PluginConfig
-	err = json.Unmarshal([]byte(plugins), &cfg)
+	err = yaml.Unmarshal([]byte(plugins), &cfg)
 	if err != nil {
 		return nil, err
 	}
