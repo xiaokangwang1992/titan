@@ -11,6 +11,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -370,6 +371,19 @@ func (p *Plugin) getPlugins(key string) (map[plugin.PluginName][]plugin.PluginCo
 	}
 	plugins, err := rds.Get(fmt.Sprintf("%s%s", p.redisBaseKey, key))
 	if err != nil {
+		if !strings.Contains(err.Error(), "key not found") {
+			ps := map[plugin.PluginName][]plugin.PluginConfig{}
+			psStr, err := yaml.Marshal(ps)
+			if err != nil {
+				logrus.Errorf("failed to marshal plugins: %+v", err)
+				return nil, err
+			}
+			rds.Set(fmt.Sprintf("%s%s", p.redisBaseKey, key), string(psStr), 0)
+			plugins = string(psStr)
+		} else {
+			logrus.Errorf("failed to get plugins: %+v", err)
+			return nil, err
+		}
 		return nil, err
 	}
 	var cfg map[plugin.PluginName][]plugin.PluginConfig
