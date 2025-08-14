@@ -20,6 +20,7 @@ import (
 	"github.com/panjf2000/ants/v2"
 	"github.com/piaobeizu/titan/pkg/storage"
 	"github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 type PluginRuntime struct {
@@ -200,7 +201,7 @@ func (p *Plugin) AddPlugin(define *plugin.PluginDefinition) error {
 		Description: define.Description,
 		Config:      define.Config,
 	})
-	data, err := json.Marshal(pluginsCfgs)
+	data, err := yaml.Marshal(pluginsCfgs)
 	if err != nil {
 		logrus.Errorf("failed to marshal plugins: %+v", err)
 		return err
@@ -349,6 +350,12 @@ func (p *Plugin) GetPluginMeta(name plugin.PluginName, version string) ([]plugin
 		}
 	}
 	return nil, plugin.ErrPluginNotFound
+}
+
+func (p *Plugin) GetPluginLogs(name plugin.PluginName, version string, taskID string, log chan string) error {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.pm.GetPluginLogs(name, version, taskID, log)
 }
 
 func (p *Plugin) Stop() {
