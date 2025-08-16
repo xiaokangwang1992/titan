@@ -20,7 +20,7 @@ import (
 	"github.com/panjf2000/ants/v2"
 	"github.com/piaobeizu/titan/pkg/storage"
 	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type PluginRuntime struct {
