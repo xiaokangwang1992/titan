@@ -75,14 +75,15 @@ func loadOptions(opts ...PluginOption) *Plugin {
 }
 
 type Plugin struct {
-	ctx          context.Context
-	mu           sync.RWMutex
-	refresh      int
-	redisBaseKey string
-	pm           *plugin.PluginManager
-	pool         *ants.Pool
-	event        *event.Event
-	conf         *plugin.PluginManagerConfig
+	ctx            context.Context
+	mu             sync.RWMutex
+	refresh        int
+	statisticsTime int
+	redisBaseKey   string
+	pm             *plugin.PluginManager
+	pool           *ants.Pool
+	event          *event.Event
+	conf           *plugin.PluginManagerConfig
 }
 
 var (
@@ -97,6 +98,9 @@ func NewPlugin(ctx context.Context, opts ...PluginOption) *Plugin {
 	opt := loadOptions(opts...)
 	if opt.refresh == 0 {
 		opt.refresh = 10
+	}
+	if opt.statisticsTime == 0 {
+		opt.statisticsTime = 60
 	}
 	if opt.redisBaseKey == "" {
 		opt.redisBaseKey = "plugins"
@@ -119,7 +123,7 @@ func NewPlugin(ctx context.Context, opts ...PluginOption) *Plugin {
 func (p *Plugin) Start() {
 	pm := plugin.NewPluginManager(p.ctx)
 	ticker := time.NewTicker(time.Second * time.Duration(p.refresh))
-	ticker1 := time.NewTicker(time.Second * 5)
+	ticker1 := time.NewTicker(time.Second * time.Duration(p.statisticsTime))
 	defer ticker.Stop()
 	for {
 		select {
