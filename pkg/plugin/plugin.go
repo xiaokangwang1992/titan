@@ -205,7 +205,6 @@ func (p *Plugin) AddPlugin(define *plugin.PluginDefinition) error {
 		pluginsCfgs[define.PluginName][index].CreateAt = define.ModifyAt
 		pluginsCfgs[define.PluginName][index].Symbol = define.SymbolName
 		pluginsCfgs[define.PluginName][index].Description = define.Description
-		return nil
 	} else {
 		pluginsCfgs[define.PluginName] = append(pluginsCfgs[define.PluginName], plugin.PluginConfig{
 			Path:        define.PluginPath,
