@@ -147,7 +147,6 @@ func (p *Plugin) Start() {
 		case <-ticker.C:
 			pluginsCfgs, err := p.GetPluginsFromRedis(pluginsKey)
 			if err != nil {
-				logrus.Warnf("failed to get plugins: %+v", err)
 				continue
 			}
 			for name, plugins := range pluginsCfgs {
@@ -394,7 +393,7 @@ func (p *Plugin) GetPluginsFromRedis(key string) (map[plugin.PluginName][]plugin
 	}
 	plugins, err := rds.Get(fmt.Sprintf("%s%s", p.redisBaseKey, key))
 	if err != nil {
-		if !strings.Contains(err.Error(), "key not found") {
+		if strings.Contains(err.Error(), "key not found") {
 			ps := map[plugin.PluginName][]plugin.PluginConfig{}
 			psStr, err := yaml.Marshal(ps)
 			if err != nil {
