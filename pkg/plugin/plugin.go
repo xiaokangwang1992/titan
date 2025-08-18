@@ -42,6 +42,12 @@ func WithRefresh(refresh int) PluginOption {
 	}
 }
 
+func WithStatisticsTime(statisticsTime int) PluginOption {
+	return func(p *Plugin) {
+		p.statisticsTime = statisticsTime
+	}
+}
+
 func WithRedisKey(redisKey string) PluginOption {
 	return func(p *Plugin) {
 		p.redisBaseKey = redisKey
@@ -107,10 +113,11 @@ func NewPlugin(ctx context.Context, opts ...PluginOption) *Plugin {
 	}
 
 	p = &Plugin{
-		ctx:          ctx,
-		mu:           sync.RWMutex{},
-		refresh:      opt.refresh,
-		redisBaseKey: opt.redisBaseKey,
+		ctx:            ctx,
+		mu:             sync.RWMutex{},
+		refresh:        opt.refresh,
+		statisticsTime: opt.statisticsTime,
+		redisBaseKey:   opt.redisBaseKey,
 		pm: plugin.NewPluginManager(
 			ctx, plugin.WithPool(opt.pool),
 			plugin.WithEvent(opt.event),
@@ -125,6 +132,7 @@ func (p *Plugin) Start() {
 	ticker := time.NewTicker(time.Second * time.Duration(p.refresh))
 	ticker1 := time.NewTicker(time.Second * time.Duration(p.statisticsTime))
 	defer ticker.Stop()
+	defer ticker1.Stop()
 	for {
 		select {
 		case <-p.ctx.Done():

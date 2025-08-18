@@ -84,6 +84,7 @@ type Event struct {
 
 type Plugin struct {
 	Refresh          int    `yaml:"refresh,omitempty"`
+	StatisticsTime   int    `yaml:"statistics-time,omitempty"`
 	GracefulShutdown int    `yaml:"graceful-shutdown,omitempty"`
 	Md5Check         bool   `yaml:"md5-check,omitempty"`
 	RedisKey         string `yaml:"redis-key,omitempty"`

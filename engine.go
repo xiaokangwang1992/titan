@@ -184,6 +184,7 @@ func (t *Titan) Plugins(redisKey string, conf *config.Plugin) *Titan {
 		t.plugin = plugin.NewPlugin(
 			t.ctx,
 			plugin.WithRefresh(conf.Refresh),
+			plugin.WithStatisticsTime(conf.StatisticsTime),
 			plugin.WithRedisKey(redisKey),
 			plugin.WithPool(t.pool),
 			plugin.WithEvent(t.event),
