@@ -1,5 +1,7 @@
 github.com/GMISWE/ieops-plugins v1.0.1-0.20250816084554-b445332f691b h1:xWeQGLuQ9nS1ajubyZ8F4vki/oWaNIPsLUBAq0TJp0E=
 github.com/GMISWE/ieops-plugins v1.0.1-0.20250816084554-b445332f691b/go.mod h1:TJrGa5Voj1S/jlQWHYMgS1d8+pheXZdGDxYcJ8jwJrk=
+github.com/GMISWE/ieops-plugins v1.0.1-0.20250827103617-12b012345533 h1:mmQ4v77hg72z0lnQDD6KLUDa2UOdJZmPxN1Y5xBGa3E=
+github.com/GMISWE/ieops-plugins v1.0.1-0.20250827103617-12b012345533/go.mod h1:TJrGa5Voj1S/jlQWHYMgS1d8+pheXZdGDxYcJ8jwJrk=
 github.com/KyleBanks/depth v1.2.1 h1:5h8fQADFrWtarTdtDudMmGsC7GPbOAu6RVB3ffsVFHc=
 github.com/KyleBanks/depth v1.2.1/go.mod h1:jzSb9d0L43HxTQfT+oSA1EEp2q+ne2uh6XgeJcm8brE=
 github.com/PuerkitoBio/purell v1.1.1/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=

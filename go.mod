@@ -3,7 +3,7 @@ module github.com/piaobeizu/titan
 go 1.24.5
 
 require (
-	github.com/GMISWE/ieops-plugins v1.0.1-0.20250816084554-b445332f691b
+	github.com/GMISWE/ieops-plugins v1.0.1-0.20250827103617-12b012345533
 	github.com/go-redsync/redsync/v4 v4.13.0
 	github.com/google/uuid v1.6.0
 	github.com/sirupsen/logrus v1.9.3
