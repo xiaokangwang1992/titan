@@ -232,10 +232,11 @@ func (s *ApiServer) callMiddleware(ms []string, sse bool) (mfs []gin.HandlerFunc
 		}
 		args := s.middlewares[m]
 		m = strings.ToUpper(m[:1]) + m[1:] + "Middleware"
-		if reflect.ValueOf(s.middleware).Elem().FieldByName("Args").IsValid() {
-			reflect.ValueOf(s.middleware).Elem().FieldByName("Args").Set(reflect.ValueOf(args))
+		middlewareInstance := reflect.New(reflect.TypeOf(s.middleware).Elem()).Interface()
+		if reflect.ValueOf(middlewareInstance).Elem().FieldByName("Args").IsValid() {
+			reflect.ValueOf(middlewareInstance).Elem().FieldByName("Args").Set(reflect.ValueOf(args))
 		}
-		method := reflect.ValueOf(s.middleware).MethodByName(m)
+		method := reflect.ValueOf(middlewareInstance).MethodByName(m)
 		if !method.IsValid() {
 			panic("middleware " + m + " not found")
 		}
