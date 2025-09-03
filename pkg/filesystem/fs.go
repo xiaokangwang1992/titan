@@ -474,7 +474,8 @@ func (u *FileSystem) ListDir(path string, hidden bool) (items []map[string]any, 
 		if !info.IsDir() {
 			md5, err = u.MD5(path, entry.Name())
 			if err != nil {
-				return
+				u.logger.Warnf("failed to get MD5 for %s: %v", entry.Name(), err)
+				md5 = "" // set to empty string to continue
 			}
 		}
 		items = append(items, map[string]any{
